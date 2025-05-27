@@ -20,7 +20,17 @@ namespace UFactor.Views
         private bool _isLoading = false;
         private bool _hasChanges = false;
         private Dictionary<string, Control> _validationControls = new Dictionary<string, Control>();
+        private void ClearValidationErrors()
+        {
+            ValidationErrorPanel.Visibility = Visibility.Collapsed;
 
+            foreach (var control in _validationControls.Values)
+            {
+                // Use SystemColors.ControlBorder or a default brush instead of trying to find a resource
+                control.BorderBrush = SystemColors.ControlDarkBrush;
+                control.ToolTip = null;
+            }
+        }
         public MaterialManagementWindow()
         {
             InitializeComponent();
