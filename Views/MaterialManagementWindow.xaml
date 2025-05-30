@@ -6,7 +6,8 @@
         xmlns:local="clr-namespace:UFactor.Views"
         mc:Ignorable="d"
         Title="Material Management" Height="600" Width="900"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        Loaded="Window_Loaded">
 
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
@@ -97,7 +98,6 @@
                                    VerticalAlignment="Center" Margin="0,5"/>
                         <ComboBox Grid.Row="1" Grid.Column="1" Name="CategoryComboBox" 
                                   IsEditable="True" Margin="0,5" 
-                                  TextInput="PropertyTextBox_TextChanged"
                                   SelectionChanged="CategoryComboBox_SelectionChanged"/>
 
                         <!-- Row 2: Thermal Conductivity -->

@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.Linq;
 using System.Windows;
 using UFactor.Models;
 
@@ -11,75 +10,110 @@ namespace UFactor
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            base.OnStartup(e);
-
-            // Initialize material database
-            string appDataPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "UFactor");
-
-            if (!Directory.Exists(appDataPath))
+            try
             {
-                Directory.CreateDirectory(appDataPath);
+                base.OnStartup(e);
+
+                // Initialize the material database
+                MaterialDb = new MaterialDatabase();
+
+                // Check if materials exist, if not add defaults
+                if (MaterialDb.Materials == null || !MaterialDb.Materials.Any())
+                {
+                    AddDefaultMaterials();
+                }
             }
-
-            string dbPath = Path.Combine(appDataPath, "materials.json");
-            MaterialDb = new MaterialDatabase(dbPath);
-
-            // If no materials exist, add some default ones
-            if (MaterialDb.Materials.Count == 0)
+            catch (System.Exception ex)
             {
-                AddDefaultMaterials();
+                MessageBox.Show($"Application startup error: {ex.Message}\n\nThe application will now close.",
+                    "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown(-1);
             }
         }
 
         private void AddDefaultMaterials()
         {
-            MaterialDb.AddMaterial(new BuildingMaterials
+            try
             {
-                Name = "Brick",
-                Category = "Masonry",
-                ThermalConductivity = 0.72,
-                Density = 1800,
-                SpecificHeat = 840,
-                VaporResistance = 10,
-                Description = "Standard clay brick"
-            });
+                // Check if we already have materials to avoid duplicates
+                if (MaterialDb != null && MaterialDb.Materials != null && MaterialDb.Materials.Any())
+                    return;
 
-            MaterialDb.AddMaterial(new BuildingMaterials
+                if (MaterialDb != null)
+                {
+                    MaterialDb.AddMaterial(new BuildingMaterials
+                    {
+                        Name = "Brick",
+                        Category = "Masonry",
+                        ThermalConductivity = 0.72,
+                        Density = 1800,
+                        SpecificHeat = 840,
+                        VaporResistance = 10,
+                        Description = "Standard clay brick"
+                    });
+
+                    MaterialDb.AddMaterial(new BuildingMaterials
+                    {
+                        Name = "Concrete Block",
+                        Category = "Masonry",
+                        ThermalConductivity = 1.0,
+                        Density = 2000,
+                        SpecificHeat = 840,
+                        VaporResistance = 6,
+                        Description = "Standard hollow concrete block"
+                    });
+
+                    MaterialDb.AddMaterial(new BuildingMaterials
+                    {
+                        Name = "Mineral Wool",
+                        Category = "Insulation",
+                        ThermalConductivity = 0.04,
+                        Density = 30,
+                        SpecificHeat = 840,
+                        VaporResistance = 1,
+                        Description = "Standard mineral wool insulation"
+                    });
+
+                    MaterialDb.AddMaterial(new BuildingMaterials
+                    {
+                        Name = "Gypsum Board",
+                        Category = "Board Materials",
+                        ThermalConductivity = 0.25,
+                        Density = 900,
+                        SpecificHeat = 840,
+                        VaporResistance = 8,
+                        Description = "Standard drywall"
+                    });
+
+                    // Save the changes
+                    MaterialDb.SaveChanges();
+                }
+            }
+            catch (System.Exception ex)
             {
-                Name = "Concrete Block",
-                Category = "Masonry",
-                ThermalConductivity = 1.0,
-                Density = 2000,
-                SpecificHeat = 840,
-                VaporResistance = 6,
-                Description = "Standard concrete block"
-            });
+                MessageBox.Show($"Error adding default materials: {ex.Message}",
+                    "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
-            MaterialDb.AddMaterial(new BuildingMaterials
+        protected override void OnExit(ExitEventArgs e)
+        {
+            try
             {
-                Name = "Mineral Wool",
-                Category = "Insulation",
-                ThermalConductivity = 0.04,
-                Density = 30,
-                SpecificHeat = 840,
-                VaporResistance = 1,
-                Description = "Standard mineral wool insulation"
-            });
-
-            MaterialDb.AddMaterial(new BuildingMaterials
+                // Save any pending changes
+                if (MaterialDb != null)
+                {
+                    MaterialDb.SaveChanges();
+                }
+            }
+            catch (System.Exception ex)
             {
-                Name = "Gypsum Board",
-                Category = "Board Materials",
-                ThermalConductivity = 0.25,
-                Density = 900,
-                SpecificHeat = 840,
-                VaporResistance = 8,
-                Description = "Standard drywall"
-            });
-
-            MaterialDb.SaveChanges();
+                System.Diagnostics.Debug.WriteLine($"Error saving on exit: {ex.Message}");
+            }
+            finally
+            {
+                base.OnExit(e);
+            }
         }
     }
 }

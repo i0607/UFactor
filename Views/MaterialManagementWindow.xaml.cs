@@ -5,559 +5,528 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using UFactor.Models;
 
 namespace UFactor.Views
 {
-    /// <summary>
-    /// Interaction logic for MaterialManagementWindow.xaml
-    /// </summary>
     public partial class MaterialManagementWindow : Window
     {
-        private BuildingMaterials _currentMaterial;
-        private bool _isNewMaterial = false;
-        private bool _isLoading = false;
-        private bool _hasChanges = false;
-        private Dictionary<string, Control> _validationControls = new Dictionary<string, Control>();
-        private void ClearValidationErrors()
-        {
-            ValidationErrorPanel.Visibility = Visibility.Collapsed;
+        private List<BuildingMaterials> _allMaterials;
+        private BuildingMaterials _selectedMaterial;
+        private bool _isLoading;
 
-            foreach (var control in _validationControls.Values)
-            {
-                // Use SystemColors.ControlBorder or a default brush instead of trying to find a resource
-                control.BorderBrush = SystemColors.ControlDarkBrush;
-                control.ToolTip = null;
-            }
-        }
         public MaterialManagementWindow()
         {
             InitializeComponent();
-
-            // Setup validation controls dictionary
-            _validationControls["Name"] = NameTextBox;
-            _validationControls["Category"] = CategoryComboBox;
-            _validationControls["ThermalConductivity"] = ConductivityTextBox;
-            _validationControls["Density"] = DensityTextBox;
-            _validationControls["SpecificHeat"] = SpecificHeatTextBox;
-            _validationControls["VaporResistance"] = VaporResistanceTextBox;
-
-            // Load materials and categories
-            LoadMaterialsAndCategories();
+            _allMaterials = new List<BuildingMaterials>();
+            _selectedMaterial = null;
+            LoadWindow();
         }
 
-        #region UI Event Handlers
+        private void LoadWindow()
+        {
+            try
+            {
+                _isLoading = true;
+
+                // Load materials from database
+                if (App.MaterialDb != null && App.MaterialDb.Materials != null)
+                {
+                    _allMaterials = App.MaterialDb.Materials.ToList();
+                }
+                else
+                {
+                    _allMaterials = new List<BuildingMaterials>();
+                }
+
+                // Populate category filter
+                PopulateCategoryFilter();
+
+                // Update material list
+                UpdateMaterialsList();
+
+                // Initialize form
+                ClearForm();
+
+                _isLoading = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading materials: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void PopulateCategoryFilter()
+        {
+            try
+            {
+                if (CategoryFilter != null)
+                {
+                    CategoryFilter.Items.Clear();
+                    CategoryFilter.Items.Add("All Categories");
+
+                    var categories = _allMaterials
+                        .Where(m => !string.IsNullOrEmpty(m.Category))
+                        .Select(m => m.Category)
+                        .Distinct()
+                        .OrderBy(c => c);
+
+                    foreach (var category in categories)
+                    {
+                        CategoryFilter.Items.Add(category);
+                    }
+
+                    CategoryFilter.SelectedIndex = 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error populating categories: {ex.Message}");
+            }
+        }
+
+        private void UpdateMaterialsList()
+        {
+            try
+            {
+                if (MaterialList == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("MaterialList is null - window may not be fully loaded");
+                    return;
+                }
+
+                // Get selected category
+                string selectedCategory = "All Categories";
+                if (CategoryFilter != null && CategoryFilter.SelectedItem != null)
+                {
+                    selectedCategory = CategoryFilter.SelectedItem.ToString();
+                }
+
+                // Filter materials by category
+                IEnumerable<BuildingMaterials> materials = _allMaterials;
+                if (selectedCategory != "All Categories")
+                {
+                    materials = materials.Where(m => m.Category == selectedCategory);
+                }
+
+                // Add materials to the list
+                MaterialList.Items.Clear();
+                foreach (var material in materials.OrderBy(m => m.Name))
+                {
+                    MaterialList.Items.Add(material);
+                }
+
+                // Re-select the previously selected material if it's still in the list
+                if (_selectedMaterial != null)
+                {
+                    for (int i = 0; i < MaterialList.Items.Count; i++)
+                    {
+                        if (MaterialList.Items[i] is BuildingMaterials material && material.Id == _selectedMaterial.Id)
+                        {
+                            MaterialList.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating materials list: {ex.Message}");
+                MessageBox.Show($"Error updating materials list: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         private void CategoryFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_isLoading) return;
             UpdateMaterialsList();
         }
 
         private void MaterialList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_hasChanges)
-            {
-                // Prompt to save changes
-                MessageBoxResult result = MessageBox.Show(
-                    "You have unsaved changes. Do you want to save them?",
-                    "Save Changes",
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Question);
+            if (_isLoading) return;
 
-                if (result == MessageBoxResult.Cancel)
+            try
+            {
+                if (MaterialList != null && MaterialList.SelectedItem is BuildingMaterials material)
                 {
-                    // Revert selection change
-                    _isLoading = true;
-                    MaterialList.SelectedItem = _currentMaterial;
-                    _isLoading = false;
-                    return;
+                    _selectedMaterial = material;
+                    LoadMaterialToForm(material);
+                    if (DeleteButton != null)
+                        DeleteButton.IsEnabled = true;
                 }
-                else if (result == MessageBoxResult.Yes)
+                else
                 {
-                    // Save changes
-                    if (!SaveMaterial())
-                    {
-                        // If save failed, revert selection change
-                        _isLoading = true;
-                        MaterialList.SelectedItem = _currentMaterial;
-                        _isLoading = false;
-                        return;
-                    }
+                    _selectedMaterial = null;
+                    if (DeleteButton != null)
+                        DeleteButton.IsEnabled = false;
                 }
             }
-
-            if (MaterialList.SelectedItem is BuildingMaterials selectedMaterial)
+            catch (Exception ex)
             {
-                // Load the selected material
-                LoadMaterial(selectedMaterial);
-                DeleteButton.IsEnabled = true;
+                MessageBox.Show($"Error selecting material: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            else
-            {
-                DeleteButton.IsEnabled = false;
-                _currentMaterial = null;
-                ClearForm();
-            }
+        }
 
-            _hasChanges = false;
-            UpdateSaveButtonState();
+        private void LoadMaterialToForm(BuildingMaterials material)
+        {
+            try
+            {
+                _isLoading = true;
+
+                if (NameTextBox != null)
+                    NameTextBox.Text = material.Name ?? string.Empty;
+                if (CategoryComboBox != null)
+                    CategoryComboBox.Text = material.Category ?? string.Empty;
+                if (ConductivityTextBox != null)
+                    ConductivityTextBox.Text = material.ThermalConductivity.ToString("0.####");
+                if (DensityTextBox != null)
+                    DensityTextBox.Text = material.Density.ToString("0.#");
+                if (SpecificHeatTextBox != null)
+                    SpecificHeatTextBox.Text = material.SpecificHeat.ToString("0.#");
+                if (VaporResistanceTextBox != null)
+                    VaporResistanceTextBox.Text = material.VaporResistance.ToString("0.#");
+                if (DescriptionTextBox != null)
+                    DescriptionTextBox.Text = material.Description ?? string.Empty;
+
+                UpdateRValue();
+                if (SaveButton != null) SaveButton.IsEnabled = false;
+                if (ValidationErrorPanel != null) ValidationErrorPanel.Visibility = Visibility.Collapsed;
+
+                _isLoading = false;
+            }
+            catch (Exception ex)
+            {
+                _isLoading = false;
+                MessageBox.Show($"Error loading material to form: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ClearForm()
+        {
+            try
+            {
+                _isLoading = true;
+
+                if (NameTextBox != null) NameTextBox.Text = string.Empty;
+                if (CategoryComboBox != null) CategoryComboBox.Text = string.Empty;
+                if (ConductivityTextBox != null) ConductivityTextBox.Text = string.Empty;
+                if (DensityTextBox != null) DensityTextBox.Text = string.Empty;
+                if (SpecificHeatTextBox != null) SpecificHeatTextBox.Text = string.Empty;
+                if (VaporResistanceTextBox != null) VaporResistanceTextBox.Text = string.Empty;
+                if (DescriptionTextBox != null) DescriptionTextBox.Text = string.Empty;
+                if (RValueTextBox != null) RValueTextBox.Text = string.Empty;
+
+                if (SaveButton != null) SaveButton.IsEnabled = false;
+                if (DeleteButton != null) DeleteButton.IsEnabled = false;
+                if (ValidationErrorPanel != null) ValidationErrorPanel.Visibility = Visibility.Collapsed;
+
+                _isLoading = false;
+            }
+            catch (Exception ex)
+            {
+                _isLoading = false;
+                System.Diagnostics.Debug.WriteLine($"Error clearing form: {ex.Message}");
+            }
         }
 
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
-            // Create a new material
-            _currentMaterial = new BuildingMaterials();
-            _isNewMaterial = true;
-            _hasChanges = false;
-
-            // Clear the form
-            ClearForm();
-
-            // Clear material selection
-            _isLoading = true;
-            MaterialList.SelectedItem = null;
-            _isLoading = false;
-
-            // Update UI
-            DeleteButton.IsEnabled = false;
-            UpdateSaveButtonState();
-
-            // Select the name field
-            NameTextBox.Focus();
+            try
+            {
+                _selectedMaterial = null;
+                if (MaterialList != null) MaterialList.SelectedItem = null;
+                ClearForm();
+                if (NameTextBox != null) NameTextBox.Focus();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error adding new material: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
-            if (MaterialList.SelectedItem is BuildingMaterials selectedMaterial)
+            try
             {
-                MessageBoxResult result = MessageBox.Show(
-                    $"Are you sure you want to delete the material '{selectedMaterial.Name}'?",
+                if (_selectedMaterial == null)
+                {
+                    MessageBox.Show("Please select a material to delete.", "No Selection",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    $"Are you sure you want to delete '{_selectedMaterial.Name}'?",
                     "Confirm Delete",
                     MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
+                    MessageBoxImage.Question);
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    // Remove the material
-                    App.MaterialDb.RemoveMaterial(selectedMaterial.Id);
-                    App.MaterialDb.SaveChanges();
+                    if (App.MaterialDb != null)
+                    {
+                        App.MaterialDb.RemoveMaterial(_selectedMaterial.Id);
+                        if (App.MaterialDb.Materials != null)
+                        {
+                            _allMaterials = App.MaterialDb.Materials.ToList();
+                        }
+                        else
+                        {
+                            _allMaterials = new List<BuildingMaterials>();
+                        }
+                    }
 
-                    // Update the UI
-                    LoadMaterialsAndCategories();
+                    UpdateMaterialsList();
+                    PopulateCategoryFilter();
                     ClearForm();
+                    _selectedMaterial = null;
 
-                    _currentMaterial = null;
-                    _hasChanges = false;
-                    UpdateSaveButtonState();
+                    MessageBox.Show("Material deleted successfully.", "Success",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error deleting material: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!ValidateForm())
+                    return;
+
+                BuildingMaterials material;
+                try
+                {
+                    material = CreateMaterialFromForm();
+                }
+                catch
+                {
+                    return; // Error message already shown in CreateMaterialFromForm
+                }
+
+                if (App.MaterialDb != null)
+                {
+                    if (_selectedMaterial == null)
+                    {
+                        // Adding new material
+                        App.MaterialDb.AddMaterial(material);
+                        MessageBox.Show("Material added successfully.", "Success",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        // Updating existing material
+                        material.Id = _selectedMaterial.Id;
+                        App.MaterialDb.UpdateMaterial(material);
+                        MessageBox.Show("Material updated successfully.", "Success",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+
+                    if (App.MaterialDb.Materials != null)
+                    {
+                        _allMaterials = App.MaterialDb.Materials.ToList();
+                    }
+                    else
+                    {
+                        _allMaterials = new List<BuildingMaterials>();
+                    }
+                }
+
+                UpdateMaterialsList();
+                PopulateCategoryFilter();
+                if (SaveButton != null) SaveButton.IsEnabled = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving material: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_hasChanges)
-            {
-                MessageBoxResult result = MessageBox.Show(
-                    "You have unsaved changes. Are you sure you want to discard them?",
-                    "Discard Changes",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.No)
-                {
-                    return;
-                }
-            }
-
-            if (_currentMaterial != null && _isNewMaterial)
-            {
-                // Discard the new material
-                _currentMaterial = null;
-                _isNewMaterial = false;
-
-                // Clear selection
-                MaterialList.SelectedItem = null;
-            }
-            else if (_currentMaterial != null)
-            {
-                // Reload the current material from database
-                var material = App.MaterialDb.GetMaterial(_currentMaterial.Id);
-                if (material != null)
-                {
-                    LoadMaterial(material);
-                }
-            }
-
-            _hasChanges = false;
-            UpdateSaveButtonState();
-        }
-
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
-        {
-            SaveMaterial();
+            this.Close();
         }
 
         private void PropertyTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (!_isLoading)
-            {
-                _hasChanges = true;
-                UpdateSaveButtonState();
-            }
+            if (_isLoading) return;
+            if (SaveButton != null) SaveButton.IsEnabled = true;
         }
 
         private void CategoryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!_isLoading)
-            {
-                _hasChanges = true;
-                UpdateSaveButtonState();
-            }
+            if (_isLoading) return;
+            if (SaveButton != null) SaveButton.IsEnabled = true;
         }
 
         private void NumericTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (!_isLoading)
-            {
-                TextBox textBox = sender as TextBox;
+            if (_isLoading) return;
 
-                // Validate numeric input
-                if (textBox != null && !string.IsNullOrEmpty(textBox.Text))
-                {
-                    if (textBox == ConductivityTextBox && double.TryParse(textBox.Text, out double conductivity))
-                    {
-                        // Update R-value
-                        double rValue = conductivity > 0 ? 0.001 / conductivity : 0;
-                        RValueTextBox.Text = rValue.ToString("0.####");
-                    }
-                }
-
-                _hasChanges = true;
-                UpdateSaveButtonState();
-            }
+            UpdateRValue();
+            if (SaveButton != null) SaveButton.IsEnabled = true;
         }
 
         private void NumericTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            // Only allow digits, decimal point, and minus sign
-            Regex regex = new Regex("[^0-9.-]+");
-            e.Handled = regex.IsMatch(e.Text);
-
-            // Only allow one decimal point
-            if (e.Text == "." && sender is TextBox textBox && textBox.Text.Contains("."))
+            // Allow only numbers and decimal point
+            if (sender is TextBox textBox)
             {
-                e.Handled = true;
-            }
-
-            // Only allow minus at the beginning
-            if (e.Text == "-" && sender is TextBox tb && (tb.Text.Contains("-") || tb.CaretIndex > 0))
-            {
-                e.Handled = true;
+                Regex regex = new Regex(@"^[0-9]*\.?[0-9]*$");
+                e.Handled = !regex.IsMatch(textBox.Text + e.Text);
             }
         }
 
-        #endregion
-
-        #region Helper Methods
-
-        private void LoadMaterialsAndCategories()
+        private void UpdateRValue()
         {
-            _isLoading = true;
-
-            // Remember the selected category
-            string selectedCategory = CategoryFilter.SelectedItem is ComboBoxItem comboBoxItem
-                ? comboBoxItem.Content.ToString()
-                : "All Categories";
-
-            // Populate category filter
-            CategoryFilter.Items.Clear();
-            CategoryFilter.Items.Add(new ComboBoxItem { Content = "All Categories" });
-
-            foreach (var category in App.MaterialDb.Categories)
+            try
             {
-                CategoryFilter.Items.Add(new ComboBoxItem { Content = category });
-            }
-
-            // Select the previously selected category or default to "All Categories"
-            for (int i = 0; i < CategoryFilter.Items.Count; i++)
-            {
-                if (CategoryFilter.Items[i] is ComboBoxItem item && item.Content.ToString() == selectedCategory)
+                if (ConductivityTextBox != null && RValueTextBox != null)
                 {
-                    CategoryFilter.SelectedIndex = i;
-                    break;
-                }
-            }
-
-            if (CategoryFilter.SelectedIndex < 0)
-            {
-                CategoryFilter.SelectedIndex = 0;
-            }
-
-            // Populate category combo box
-            CategoryComboBox.Items.Clear();
-            foreach (var category in App.MaterialDb.Categories)
-            {
-                CategoryComboBox.Items.Add(category);
-            }
-
-            // Update the materials list
-            UpdateMaterialsList();
-
-            _isLoading = false;
-        }
-
-        private void UpdateMaterialsList()
-        {
-            if (_isLoading)
-            {
-                return;
-            }
-
-            // Get the selected category
-            string selectedCategory = "All Categories";
-            if (CategoryFilter.SelectedItem is ComboBoxItem item)
-            {
-                selectedCategory = item.Content.ToString();
-            }
-
-            // Remember the selected material
-            BuildingMaterials selectedMaterial = MaterialList.SelectedItem as BuildingMaterials;
-
-            // Filter materials by category
-            MaterialList.Items.Clear();
-            IEnumerable<BuildingMaterials> materials = App.MaterialDb.Materials;
-
-            if (selectedCategory != "All Categories")
-            {
-                materials = materials.Where(m => m.Category == selectedCategory);
-            }
-
-            // Add materials to the list
-            foreach (var material in materials.OrderBy(m => m.Name))
-            {
-                MaterialList.Items.Add(material);
-            }
-
-            // Re-select the previously selected material if it's still in the list
-            if (selectedMaterial != null)
-            {
-                for (int i = 0; i < MaterialList.Items.Count; i++)
-                {
-                    if (MaterialList.Items[i] is BuildingMaterials m && m.Id == selectedMaterial.Id)
+                    if (double.TryParse(ConductivityTextBox.Text, out double conductivity) && conductivity > 0)
                     {
-                        MaterialList.SelectedIndex = i;
-                        break;
+                        double rValue = 1.0 / conductivity * 0.001; // Per mm
+                        RValueTextBox.Text = rValue.ToString("0.######");
+                    }
+                    else
+                    {
+                        RValueTextBox.Text = string.Empty;
                     }
                 }
             }
-        }
-
-        private void LoadMaterial(BuildingMaterials material)
-        {
-            _currentMaterial = material;
-            _isNewMaterial = false;
-            _isLoading = true;
-
-            // Populate the form
-            NameTextBox.Text = material.Name;
-            CategoryComboBox.Text = material.Category;
-            ConductivityTextBox.Text = material.ThermalConductivity.ToString("0.####");
-            RValueTextBox.Text = material.RValuePerMm.ToString("0.####");
-            DensityTextBox.Text = material.Density.ToString("0.##");
-            SpecificHeatTextBox.Text = material.SpecificHeat.ToString("0.##");
-            VaporResistanceTextBox.Text = material.VaporResistance.ToString("0.##");
-            DescriptionTextBox.Text = material.Description;
-
-            // Clear validation errors
-            ClearValidationErrors();
-
-            _isLoading = false;
-        }
-
-        private void ClearForm()
-        {
-            _isLoading = true;
-
-            NameTextBox.Text = string.Empty;
-            CategoryComboBox.Text = string.Empty;
-            ConductivityTextBox.Text = string.Empty;
-            RValueTextBox.Text = string.Empty;
-            DensityTextBox.Text = string.Empty;
-            SpecificHeatTextBox.Text = string.Empty;
-            VaporResistanceTextBox.Text = string.Empty;
-            DescriptionTextBox.Text = string.Empty;
-
-            // Clear validation errors
-            ClearValidationErrors();
-
-            _isLoading = false;
-        }
-
-        private void UpdateSaveButtonState()
-        {
-            SaveButton.IsEnabled = _hasChanges && ValidateInputs(false);
-        }
-
-        private bool ValidateInputs(bool showErrors = true)
-        {
-            // Clear previous validation errors
-            ClearValidationErrors();
-
-            List<string> errors = new List<string>();
-
-            // Validate Name
-            if (string.IsNullOrWhiteSpace(NameTextBox.Text))
+            catch (Exception ex)
             {
-                errors.Add("Material name is required.");
-                if (showErrors) MarkInvalid("Name");
-            }
-
-            // Validate Category
-            if (string.IsNullOrWhiteSpace(CategoryComboBox.Text))
-            {
-                errors.Add("Category is required.");
-                if (showErrors) MarkInvalid("Category");
-            }
-
-            // Validate Thermal Conductivity
-            if (!double.TryParse(ConductivityTextBox.Text, out double conductivity) || conductivity <= 0)
-            {
-                errors.Add("Thermal conductivity must be a positive number.");
-                if (showErrors) MarkInvalid("ThermalConductivity");
-            }
-
-            // Validate Density
-            if (!double.TryParse(DensityTextBox.Text, out double density) || density <= 0)
-            {
-                errors.Add("Density must be a positive number.");
-                if (showErrors) MarkInvalid("Density");
-            }
-
-            // Validate Specific Heat
-            if (!double.TryParse(SpecificHeatTextBox.Text, out double specificHeat) || specificHeat <= 0)
-            {
-                errors.Add("Specific heat must be a positive number.");
-                if (showErrors) MarkInvalid("SpecificHeat");
-            }
-
-            // Validate Vapor Resistance
-            if (!double.TryParse(VaporResistanceTextBox.Text, out double vaporResistance) || vaporResistance < 0)
-            {
-                errors.Add("Vapor resistance must be a non-negative number.");
-                if (showErrors) MarkInvalid("VaporResistance");
-            }
-
-            // Show validation errors if any
-            if (showErrors && errors.Count > 0)
-            {
-                ValidationErrorText.Text = string.Join("\n", errors);
-                ValidationErrorPanel.Visibility = Visibility.Visible;
-            }
-
-            return errors.Count == 0;
-        }
-
-        private void MarkInvalid(string propertyName)
-        {
-            if (_validationControls.TryGetValue(propertyName, out Control control))
-            {
-                control.BorderBrush = Brushes.Red;
-                control.ToolTip = ValidationErrorText.Text;
+                System.Diagnostics.Debug.WriteLine($"Error updating R-value: {ex.Message}");
             }
         }
 
-        private void ClearValidationErrors()
+        private bool ValidateForm()
         {
-            ValidationErrorPanel.Visibility = Visibility.Collapsed;
+            var errors = new List<string>();
 
-            foreach (var control in _validationControls.Values)
-            {
-                control.BorderBrush = (SolidColorBrush)FindResource("TextBoxBorder");
-                control.ToolTip = null;
-            }
-        }
+            string nameText = string.Empty;
+            string categoryText = string.Empty;
+            string conductivityText = string.Empty;
+            string densityText = string.Empty;
+            string specificHeatText = string.Empty;
+            string vaporResistanceText = string.Empty;
 
-        private bool SaveMaterial()
-        {
-            if (_currentMaterial == null)
+            if (NameTextBox != null) nameText = NameTextBox.Text ?? string.Empty;
+            if (CategoryComboBox != null) categoryText = CategoryComboBox.Text ?? string.Empty;
+            if (ConductivityTextBox != null) conductivityText = ConductivityTextBox.Text ?? string.Empty;
+            if (DensityTextBox != null) densityText = DensityTextBox.Text ?? string.Empty;
+            if (SpecificHeatTextBox != null) specificHeatText = SpecificHeatTextBox.Text ?? string.Empty;
+            if (VaporResistanceTextBox != null) vaporResistanceText = VaporResistanceTextBox.Text ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(nameText))
+                errors.Add("Name is required");
+
+            if (string.IsNullOrWhiteSpace(categoryText))
+                errors.Add("Category is required");
+
+            if (!double.TryParse(conductivityText, out double conductivity) || conductivity <= 0)
+                errors.Add("Thermal Conductivity must be a positive number");
+
+            if (!double.TryParse(densityText, out double density) || density <= 0)
+                errors.Add("Density must be a positive number");
+
+            if (!double.TryParse(specificHeatText, out double specificHeat) || specificHeat <= 0)
+                errors.Add("Specific Heat must be a positive number");
+
+            if (!double.TryParse(vaporResistanceText, out double vaporResistance) || vaporResistance < 0)
+                errors.Add("Vapor Resistance must be a non-negative number");
+
+            if (errors.Any())
             {
+                if (ValidationErrorText != null) ValidationErrorText.Text = string.Join("\n", errors);
+                if (ValidationErrorPanel != null) ValidationErrorPanel.Visibility = Visibility.Visible;
                 return false;
             }
 
-            // Validate input
-            if (!ValidateInputs(true))
-            {
-                return false;
-            }
-
-            // Update the material
-            _currentMaterial.Name = NameTextBox.Text;
-            _currentMaterial.Category = CategoryComboBox.Text;
-            _currentMaterial.ThermalConductivity = double.Parse(ConductivityTextBox.Text);
-            _currentMaterial.Density = double.Parse(DensityTextBox.Text);
-            _currentMaterial.SpecificHeat = double.Parse(SpecificHeatTextBox.Text);
-            _currentMaterial.VaporResistance = double.Parse(VaporResistanceTextBox.Text);
-            _currentMaterial.Description = DescriptionTextBox.Text;
-
-            // Add to database if it's a new material
-            if (_isNewMaterial)
-            {
-                App.MaterialDb.AddMaterial(_currentMaterial);
-                _isNewMaterial = false;
-            }
-
-            // Save changes
-            App.MaterialDb.SaveChanges();
-
-            // Refresh the UI
-            LoadMaterialsAndCategories();
-
-            // Select the saved material
-            for (int i = 0; i < MaterialList.Items.Count; i++)
-            {
-                if (MaterialList.Items[i] is BuildingMaterials m && m.Id == _currentMaterial.Id)
-                {
-                    MaterialList.SelectedIndex = i;
-                    break;
-                }
-            }
-
-            _hasChanges = false;
-            UpdateSaveButtonState();
-
-            MessageBox.Show("Material saved successfully.", "Success",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-
+            if (ValidationErrorPanel != null) ValidationErrorPanel.Visibility = Visibility.Collapsed;
             return true;
         }
 
-        #endregion
-
-        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        private BuildingMaterials CreateMaterialFromForm()
         {
-            if (_hasChanges)
+            try
             {
-                MessageBoxResult result = MessageBox.Show(
-                    "You have unsaved changes. Do you want to save them?",
-                    "Save Changes",
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Question);
+                string nameText = string.Empty;
+                string categoryText = string.Empty;
+                string conductivityText = "0";
+                string densityText = "0";
+                string specificHeatText = "0";
+                string vaporResistanceText = "0";
+                string descriptionText = string.Empty;
 
-                if (result == MessageBoxResult.Cancel)
+                if (NameTextBox != null && NameTextBox.Text != null)
+                    nameText = NameTextBox.Text.Trim();
+                if (CategoryComboBox != null && CategoryComboBox.Text != null)
+                    categoryText = CategoryComboBox.Text.Trim();
+                if (ConductivityTextBox != null && ConductivityTextBox.Text != null)
+                    conductivityText = ConductivityTextBox.Text;
+                if (DensityTextBox != null && DensityTextBox.Text != null)
+                    densityText = DensityTextBox.Text;
+                if (SpecificHeatTextBox != null && SpecificHeatTextBox.Text != null)
+                    specificHeatText = SpecificHeatTextBox.Text;
+                if (VaporResistanceTextBox != null && VaporResistanceTextBox.Text != null)
+                    vaporResistanceText = VaporResistanceTextBox.Text;
+                if (DescriptionTextBox != null && DescriptionTextBox.Text != null)
+                    descriptionText = DescriptionTextBox.Text.Trim();
+
+                return new BuildingMaterials
                 {
-                    e.Cancel = true;
-                }
-                else if (result == MessageBoxResult.Yes)
-                {
-                    if (!SaveMaterial())
-                    {
-                        e.Cancel = true;
-                    }
-                }
+                    Name = nameText,
+                    Category = categoryText,
+                    ThermalConductivity = double.Parse(conductivityText),
+                    Density = double.Parse(densityText),
+                    SpecificHeat = double.Parse(specificHeatText),
+                    VaporResistance = double.Parse(vaporResistanceText),
+                    Description = descriptionText
+                };
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error creating material from form: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                throw; // Re-throw to let caller handle
+            }
+        }
 
-            base.OnClosing(e);
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Double-check that all controls are available
+                if (MaterialList == null || CategoryFilter == null)
+                {
+                    MessageBox.Show("Error: Window controls not properly initialized.", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    this.Close();
+                    return;
+                }
+
+                // Refresh the display
+                LoadWindow();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading window: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                this.Close();
+            }
         }
     }
 }

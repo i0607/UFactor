@@ -1,86 +1,32 @@
 ﻿using System;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 
 namespace UFactor.Models
 {
-    public class BuildingMaterials : INotifyPropertyChanged
+    public class BuildingMaterials
     {
-        private string _name;
-        private string _category;
-        private double _thermalConductivity;
-        private double _density;
-        private double _specificHeat;
-        private double _vaporResistance;
-        private string _description;
-        private Guid _id;
+        public Guid Id { get; set; }
+        public string Name { get; set; }
+        public string Category { get; set; }
+        public double ThermalConductivity { get; set; } // W/(m·K)
+        public double Density { get; set; } // kg/m³
+        public double SpecificHeat { get; set; } // J/(kg·K)
+        public double VaporResistance { get; set; } // μ (dimensionless)
+        public string Description { get; set; }
 
         public BuildingMaterials()
         {
-            _id = Guid.NewGuid();
-        }
-
-        public Guid Id
-        {
-            get => _id;
-            set { _id = value; OnPropertyChanged(); }
-        }
-
-        public string Name
-        {
-            get => _name;
-            set { _name = value; OnPropertyChanged(); }
-        }
-
-        public string Category
-        {
-            get => _category;
-            set { _category = value; OnPropertyChanged(); }
-        }
-
-        public double ThermalConductivity
-        {
-            get => _thermalConductivity;
-            set
-            {
-                _thermalConductivity = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(RValuePerMm));
-            }
-        }
-
-        public double Density
-        {
-            get => _density;
-            set { _density = value; OnPropertyChanged(); }
-        }
-
-        public double SpecificHeat
-        {
-            get => _specificHeat;
-            set { _specificHeat = value; OnPropertyChanged(); }
-        }
-
-        public double VaporResistance
-        {
-            get => _vaporResistance;
-            set { _vaporResistance = value; OnPropertyChanged(); }
-        }
-
-        public string Description
-        {
-            get => _description;
-            set { _description = value; OnPropertyChanged(); }
+            Id = Guid.NewGuid();
+            Name = string.Empty;
+            Category = string.Empty;
+            Description = string.Empty;
         }
 
         // Calculated property
-        public double RValuePerMm => ThermalConductivity > 0 ? 0.001 / ThermalConductivity : 0;
+        public double RValuePerMm => ThermalConductivity > 0 ? (1.0 / ThermalConductivity) * 0.001 : 0;
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        public override string ToString()
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            return Name ?? "Unnamed Material";
         }
     }
 }
