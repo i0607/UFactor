@@ -42,6 +42,9 @@ namespace UFactor.Views
                 // Populate category filter
                 PopulateCategoryFilter();
 
+                // Populate category combo box in properties panel
+                PopulateCategoryComboBox();
+
                 // Update material list
                 UpdateMaterialsList();
 
@@ -54,6 +57,47 @@ namespace UFactor.Views
             {
                 MessageBox.Show($"Error loading materials: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void PopulateCategoryComboBox()
+        {
+            try
+            {
+                if (CategoryComboBox != null)
+                {
+                    CategoryComboBox.Items.Clear();
+
+                    // Add standard building material categories
+                    CategoryComboBox.Items.Add("Masonry");
+                    CategoryComboBox.Items.Add("Insulation");
+                    CategoryComboBox.Items.Add("Board Materials");
+                    CategoryComboBox.Items.Add("Metals");
+                    CategoryComboBox.Items.Add("Roofing");
+                    CategoryComboBox.Items.Add("Siding");
+                    CategoryComboBox.Items.Add("Air Spaces");
+                    CategoryComboBox.Items.Add("Concrete");
+                    CategoryComboBox.Items.Add("Wood");
+                    CategoryComboBox.Items.Add("Glass");
+                    CategoryComboBox.Items.Add("Membranes");
+                    CategoryComboBox.Items.Add("Other");
+
+                    // Also add any existing categories from current materials
+                    var existingCategories = _allMaterials
+                        .Where(m => !string.IsNullOrEmpty(m.Category))
+                        .Select(m => m.Category)
+                        .Distinct()
+                        .Where(c => !CategoryComboBox.Items.Contains(c));
+
+                    foreach (var category in existingCategories)
+                    {
+                        CategoryComboBox.Items.Add(category);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error populating category combo box: {ex.Message}");
             }
         }
 
@@ -284,6 +328,7 @@ namespace UFactor.Views
 
                     UpdateMaterialsList();
                     PopulateCategoryFilter();
+                    PopulateCategoryComboBox();
                     ClearForm();
                     _selectedMaterial = null;
 
@@ -345,6 +390,7 @@ namespace UFactor.Views
 
                 UpdateMaterialsList();
                 PopulateCategoryFilter();
+                PopulateCategoryComboBox();
                 if (SaveButton != null) SaveButton.IsEnabled = false;
             }
             catch (Exception ex)

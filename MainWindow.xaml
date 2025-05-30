@@ -11,6 +11,74 @@
     <Window.Resources>
         <!-- Define some basic styles -->
         <SolidColorBrush x:Key="TextBoxBorder" Color="LightGray"/>
+
+        <!-- Style for calculation results -->
+        <Style x:Key="ResultTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,5,0,0"/>
+        </Style>
+
+        <!-- Style for result headers -->
+        <Style x:Key="ResultHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <!-- Custom TabItem Style with Close Button -->
+        <Style x:Key="ClosableTabItemStyle" TargetType="TabItem">
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Margin="0">
+                            <TextBlock Text="{Binding}" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <Button Name="CloseButton" 
+                                    Content="×" 
+                                    FontSize="12" 
+                                    FontWeight="Bold"
+                                    Width="16" 
+                                    Height="16"
+                                    Margin="0"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    Border="Transparent"
+                                    Foreground="Gray"
+                                    ToolTip="Close assembly"
+                                    Click="CloseTab_Click">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="LightCoral"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Add Tab Style -->
+        <Style x:Key="AddTabStyle" TargetType="TabItem">
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="+" FontSize="16" FontWeight="Bold" 
+                                   Foreground="Green" ToolTip="Add new assembly"
+                                   Margin="5,0"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -34,6 +102,9 @@
 
             <MenuItem Header="_Edit">
                 <MenuItem Header="_Settings..." Click="Settings_Click"/>
+                <Separator/>
+                <MenuItem Header="_Add Assembly" Click="AddAssembly_Click" InputGestureText="Ctrl+T"/>
+                <MenuItem Header="_Close Assembly" Click="CloseCurrentAssembly_Click" InputGestureText="Ctrl+W"/>
             </MenuItem>
 
             <MenuItem Header="_Tools">
@@ -51,129 +122,19 @@
         <TabControl Grid.Row="1" Name="MainTabControl" 
                     SelectionChanged="MainTabControl_SelectionChanged"
                     Margin="5">
-
-            <!-- Initial Assembly Tab -->
-            <TabItem Header="Wall Assembly 1">
-                <ScrollViewer>
-                    <Grid Margin="10">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <!-- Assembly Header -->
-                        <Grid Grid.Row="0" Margin="0,0,0,20">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="100"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0" Text="Assembly Name:" 
-                                       VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
-                            <TextBox Grid.Column="1" Name="AssemblyNameTextBox" 
-                                     Text="Wall Assembly 1" VerticalAlignment="Center"/>
-
-                            <TextBlock Grid.Column="2" Text="Type:" 
-                                       VerticalAlignment="Center" Margin="20,0,10,0" FontWeight="SemiBold"/>
-                            <ComboBox Grid.Column="3" Name="AssemblyTypeComboBox" 
-                                      VerticalAlignment="Center">
-                                <ComboBoxItem Content="Wall" IsSelected="True"/>
-                                <ComboBoxItem Content="Roof"/>
-                                <ComboBoxItem Content="Floor"/>
-                            </ComboBox>
-                        </Grid>
-
-                        <!-- Layer Management -->
-                        <Grid Grid.Row="1" Margin="0,0,0,20">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0" Text="Assembly Layers (Outside to Inside):" 
-                                       FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
-
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button Name="AddLayerButton" Content="Add Layer" Click="AddLayerButton_Click" 
-                                        Width="100" Margin="5,0"/>
-                                <Button Name="RemoveLayerButton" Content="Remove Layer" Click="RemoveLayerButton_Click" 
-                                        Width="100" Margin="5,0" IsEnabled="False"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- Layers List -->
-                        <DataGrid Grid.Row="2" Name="LayersDataGrid" 
-                                  AutoGenerateColumns="False" CanUserAddRows="False"
-                                  GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                                  SelectionChanged="LayersDataGrid_SelectionChanged"
-                                  Margin="0,0,0,20">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="#" Width="40" IsReadOnly="True" 
-                                                    Binding="{Binding LayerNumber}"/>
-                                <DataGridComboBoxColumn Header="Material" Width="200" 
-                                                        DisplayMemberPath="Name" 
-                                                        SelectedValuePath="Id"
-                                                        SelectedValueBinding="{Binding MaterialId}"/>
-                                <DataGridTextColumn Header="Thickness (mm)" Width="120" 
-                                                    Binding="{Binding Thickness}"/>
-                                <DataGridTextColumn Header="R-Value" Width="100" IsReadOnly="True"
-                                                    Binding="{Binding RValue, StringFormat=0.###}"/>
-                                <DataGridTextColumn Header="Description" Width="*" 
-                                                    Binding="{Binding Description}"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-
-                        <!-- Results Panel -->
-                        <Border Grid.Row="3" BorderBrush="DarkBlue" BorderThickness="2" 
-                                Background="LightBlue" Padding="15">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Total R-Value" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Name="TotalRValueText" Text="0.000 m²·K/W" 
-                                               FontSize="16" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="U-Factor" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Name="UFactorText" Text="0.000 W/(m²·K)" 
-                                               FontSize="16" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Total Thickness" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Name="TotalThicknessText" Text="0 mm" 
-                                               FontSize="16" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </Grid>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- Add Tab -->
-            <TabItem Header="+" ToolTip="Add new assembly">
-                <Grid>
-                    <TextBlock Text="Click to add a new assembly" 
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               FontSize="16" Foreground="Gray"/>
-                </Grid>
-            </TabItem>
+            <!-- Assembly tabs will be added dynamically -->
         </TabControl>
 
         <!-- Status Bar -->
         <StatusBar Grid.Row="2">
             <StatusBarItem>
                 <TextBlock Name="StatusText" Text="Ready"/>
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock Name="AssemblyCountText" Text="Assemblies: 0"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock Text="U-Factor Calculator v1.0"/>
             </StatusBarItem>
         </StatusBar>
     </Grid>
