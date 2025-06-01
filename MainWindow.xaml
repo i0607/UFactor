@@ -43,7 +43,7 @@
                                     Margin="0"
                                     Padding="0"
                                     Background="Transparent"
-                                    Border="Transparent"
+                                    BorderBrush="Transparent"
                                     Foreground="Gray"
                                     ToolTip="Close assembly"
                                     Click="CloseTab_Click">

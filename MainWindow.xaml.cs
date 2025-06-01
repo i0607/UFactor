@@ -255,6 +255,21 @@ namespace UFactor
 
         private Grid CreateLayerManagement(WallAssembly assembly)
         {
+            var grid = new Grid();
+            grid.Margin = new Thickness(0, 0, 0, 20);
+
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // Title
+            var titleText = new TextBlock();
+            titleText.Text = "Assembly Layers (Outside to Inside):";
+            titleText.FontSize = 14;
+            titleText.FontWeight = FontWeights.SemiBold;
+            titleText.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(titleText, 0);
+            grid.Children.Add(titleText);
+
             // Button Panel
             var buttonPanel = new StackPanel();
             buttonPanel.Orientation = Orientation.Horizontal;
@@ -262,7 +277,7 @@ namespace UFactor
             var addButton = new Button();
             addButton.Content = "Add Layer";
             addButton.Width = 100;
-            addButton.Margin = new Thickness(5, 0);
+            addButton.Margin = new Thickness(5, 0, 5, 0);
             addButton.Background = Brushes.LightGreen;
             addButton.Click += (s, e) => AddLayer_Click(assembly);
             buttonPanel.Children.Add(addButton);
@@ -270,12 +285,15 @@ namespace UFactor
             var removeButton = new Button();
             removeButton.Content = "Remove Layer";
             removeButton.Width = 100;
-            removeButton.Margin = new Thickness(5, 0);
+            removeButton.Margin = new Thickness(5, 0, 5, 0);
             removeButton.Background = Brushes.LightCoral;
             removeButton.IsEnabled = false;
             removeButton.Tag = assembly; // Store assembly reference
             removeButton.Click += (s, e) => RemoveLayer_Click(assembly, removeButton);
             buttonPanel.Children.Add(removeButton);
+
+            Grid.SetColumn(buttonPanel, 1);
+            grid.Children.Add(buttonPanel);
 
             return grid;
         }
@@ -502,6 +520,38 @@ namespace UFactor
                 return;
             }
 
+            // Check for unsaved changes before closing
+            if (_hasUnsavedChanges)
+            {
+                var saveResult = MessageBox.Show(
+                    $"You have unsaved changes in the project.\n\n" +
+                    $"Do you want to save the project before closing assembly '{assembly.Name}'?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                switch (saveResult)
+                {
+                    case MessageBoxResult.Yes:
+                        // Try to save the project
+                        if (!SaveCurrentProject())
+                        {
+                            // If save failed or was cancelled, don't close the tab
+                            return;
+                        }
+                        break;
+
+                    case MessageBoxResult.Cancel:
+                        // User cancelled, don't close the tab
+                        return;
+
+                    case MessageBoxResult.No:
+                        // Continue without saving
+                        break;
+                }
+            }
+
+            // Final confirmation to close the assembly
             var result = MessageBox.Show($"Close assembly '{assembly.Name}'?",
                 "Confirm Close", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
@@ -512,12 +562,13 @@ namespace UFactor
                 MainTabControl.Items.Remove(tabItem);
 
                 // Select another tab if this was selected
-                if (MainTabControl.SelectedItem == null)
+                if (MainTabControl.SelectedItem == null && MainTabControl.Items.Count > 0)
                 {
                     MainTabControl.SelectedIndex = 0;
                 }
 
-                MarkAsModified();
+                // Update project state
+                MarkAsModified(); // Mark as modified since we removed an assembly
                 UpdateAssemblyCount();
                 UpdateStatus($"Assembly '{assembly.Name}' closed");
             }
@@ -680,9 +731,14 @@ namespace UFactor
                 var currentTab = GetCurrentTab();
                 var currentAssembly = GetCurrentAssembly();
 
-                if (currentTab != null && currentAssembly != null)
+                if (currentTab != null && currentAssembly != null && currentTab.Header.ToString() != "+")
                 {
                     CloseAssemblyTab(currentTab, currentAssembly);
+                }
+                else
+                {
+                    MessageBox.Show("No assembly selected to close.", "No Selection",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
