@@ -39,7 +39,7 @@ The **U-Factor Calculator** is a professional desktop application designed for b
 **Option 2: Build from Source**
 
 bash# Clone the repository
-git clone https://github.com/yourusername/ufactor-calculator.git
+git clone https://github.com/i0607/UFactor.git
 cd ufactor-calculator
 
 **# Open in Visual Studio**
