@@ -92,12 +92,11 @@
         <Menu Grid.Row="0">
             <MenuItem Header="_File">
                 <MenuItem Header="_New Project" Click="NewProject_Click" InputGestureText="Ctrl+N"/>
-                <MenuItem Header="_Open Project..." Click="OpenProject_Click" InputGestureText="Ctrl+O"/>
+                <MenuItem Header="_Open Project" Click="OpenProject_Click" InputGestureText="Ctrl+O"/>
+                <MenuItem Header="Open in _New Window" Click="OpenProjectInNewWindow_Click" InputGestureText="Ctrl+Shift+O"/>
                 <Separator/>
                 <MenuItem Header="_Save Project" Click="SaveProject_Click" InputGestureText="Ctrl+S"/>
-                <MenuItem Header="Save Project _As..." Click="SaveProjectAs_Click" InputGestureText="Ctrl+Shift+S"/>
-                <Separator/>
-                <MenuItem Header="E_xit" Click="Exit_Click" InputGestureText="Alt+F4"/>
+                <MenuItem Header="Save Project _As..." Click="SaveProjectAs_Click"/>
             </MenuItem>
 
             <MenuItem Header="_Edit">

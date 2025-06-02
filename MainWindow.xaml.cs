@@ -27,6 +27,7 @@ namespace UFactor
 
         // Multi-assembly management
         private int _nextAssemblyNumber = 1;
+        private bool _isLoading = false;
 
         public MainWindow()
         {
@@ -61,6 +62,8 @@ namespace UFactor
         {
             try
             {
+                _isLoading = true;
+
                 // Initialize collections
                 _assemblies = new List<WallAssembly>();
                 _availableMaterials = new ObservableCollection<BuildingMaterials>();
@@ -84,9 +87,13 @@ namespace UFactor
                 UpdateWindowTitle();
                 UpdateAssemblyCount();
                 UpdateStatus("Ready - Add materials to create your wall assembly");
+
+                _isLoading = false;
+                _hasUnsavedChanges = false;
             }
             catch (Exception ex)
             {
+                _isLoading = false;
                 MessageBox.Show($"Error initializing application: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -120,26 +127,46 @@ namespace UFactor
                 assembly.PropertyChanged += Assembly_PropertyChanged;
                 _assemblies.Add(assembly);
 
+                var tabItem = CreateAssemblyTab(assembly);
+
+                // Only mark as modified if this is a genuine user action
+                if (!_isLoading && _assemblies.Count > 1)
+                {
+                    MarkAsModified();
+                }
+
+                return tabItem;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error creating assembly tab: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
+        }
+
+        private TabItem CreateAssemblyTab(WallAssembly assembly)
+        {
+            try
+            {
                 // Create tab item
                 var tabItem = new TabItem();
-                tabItem.Header = name;
+                tabItem.Header = assembly.Name;
                 tabItem.Style = (Style)FindResource("ClosableTabItemStyle");
-                tabItem.Tag = assembly; // Store reference to assembly
+                tabItem.Tag = assembly;
 
                 // Create tab content
                 var content = CreateAssemblyContent(assembly);
                 tabItem.Content = content;
 
-                // Insert before the "+" tab (always last)
+                // Insert before the "+" tab
                 int insertIndex = MainTabControl.Items.Count > 0 ? MainTabControl.Items.Count - 1 : 0;
                 MainTabControl.Items.Insert(insertIndex, tabItem);
 
                 // Select the new tab
                 MainTabControl.SelectedItem = tabItem;
 
-                // Update counters
                 _nextAssemblyNumber++;
-                MarkAsModified();
                 UpdateAssemblyCount();
 
                 return tabItem;
@@ -155,6 +182,15 @@ namespace UFactor
         private ScrollViewer CreateAssemblyContent(WallAssembly assembly)
         {
             var scrollViewer = new ScrollViewer();
+
+            // Enable smooth scrolling
+            scrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            scrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+            scrollViewer.CanContentScroll = false;
+            scrollViewer.PanningMode = PanningMode.Both;
+            scrollViewer.IsManipulationEnabled = true;
+            scrollViewer.PreviewMouseWheel += ScrollViewer_PreviewMouseWheel;
+
             var mainGrid = new Grid();
             mainGrid.Margin = new Thickness(10);
 
@@ -186,6 +222,15 @@ namespace UFactor
 
             scrollViewer.Content = mainGrid;
             return scrollViewer;
+        }
+
+        private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (sender is ScrollViewer scrollViewer)
+            {
+                scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta / 3.0);
+                e.Handled = true;
+            }
         }
 
         private Grid CreateAssemblyHeader(WallAssembly assembly)
@@ -274,23 +319,55 @@ namespace UFactor
             var buttonPanel = new StackPanel();
             buttonPanel.Orientation = Orientation.Horizontal;
 
+            // Add Layer Button
             var addButton = new Button();
             addButton.Content = "Add Layer";
             addButton.Width = 100;
             addButton.Margin = new Thickness(5, 0, 5, 0);
             addButton.Background = Brushes.LightGreen;
-            addButton.Click += (s, e) => AddLayer_Click(assembly);
+            addButton.Tag = DateTime.Now;
+            addButton.Click += (s, e) => AddLayer_Click_Safe(assembly, addButton);
             buttonPanel.Children.Add(addButton);
 
+            // Remove Layer Button
             var removeButton = new Button();
             removeButton.Content = "Remove Layer";
             removeButton.Width = 100;
             removeButton.Margin = new Thickness(5, 0, 5, 0);
             removeButton.Background = Brushes.LightCoral;
             removeButton.IsEnabled = false;
-            removeButton.Tag = assembly; // Store assembly reference
+            removeButton.Tag = assembly;
             removeButton.Click += (s, e) => RemoveLayer_Click(assembly, removeButton);
             buttonPanel.Children.Add(removeButton);
+
+            // Clear All Layers Button
+            var clearAllButton = new Button();
+            clearAllButton.Content = "Clear All";
+            clearAllButton.Width = 100;
+            clearAllButton.Margin = new Thickness(5, 0, 5, 0);
+            clearAllButton.Background = Brushes.Orange;
+            clearAllButton.Click += (s, e) => ClearAllLayers_Click(assembly);
+            buttonPanel.Children.Add(clearAllButton);
+
+            // Move Layer Up Button
+            var moveUpButton = new Button();
+            moveUpButton.Content = "Move ↑";
+            moveUpButton.Width = 80;
+            moveUpButton.Margin = new Thickness(5, 0, 5, 0);
+            moveUpButton.Background = Brushes.LightBlue;
+            moveUpButton.IsEnabled = false;
+            moveUpButton.Click += (s, e) => MoveLayerUp_Click(assembly, moveUpButton);
+            buttonPanel.Children.Add(moveUpButton);
+
+            // Move Layer Down Button
+            var moveDownButton = new Button();
+            moveDownButton.Content = "Move ↓";
+            moveDownButton.Width = 80;
+            moveDownButton.Margin = new Thickness(5, 0, 5, 0);
+            moveDownButton.Background = Brushes.LightBlue;
+            moveDownButton.IsEnabled = false;
+            moveDownButton.Click += (s, e) => MoveLayerDown_Click(assembly, moveDownButton);
+            buttonPanel.Children.Add(moveDownButton);
 
             Grid.SetColumn(buttonPanel, 1);
             grid.Children.Add(buttonPanel);
@@ -303,24 +380,43 @@ namespace UFactor
             var dataGrid = new DataGrid();
             dataGrid.AutoGenerateColumns = false;
             dataGrid.CanUserAddRows = false;
+            dataGrid.CanUserDeleteRows = false;
+            dataGrid.CanUserResizeColumns = true;
+            dataGrid.CanUserReorderColumns = true;
+            dataGrid.CanUserSortColumns = false;
             dataGrid.GridLinesVisibility = DataGridGridLinesVisibility.Horizontal;
             dataGrid.HeadersVisibility = DataGridHeadersVisibility.Column;
             dataGrid.Margin = new Thickness(0, 0, 0, 20);
             dataGrid.MinHeight = 200;
             dataGrid.ItemsSource = assembly.Layers;
 
+            // Better row styling
+            dataGrid.RowBackground = Brushes.White;
+            dataGrid.AlternatingRowBackground = new SolidColorBrush(Color.FromRgb(248, 248, 248));
+            dataGrid.SelectionMode = DataGridSelectionMode.Single;
+            dataGrid.SelectionUnit = DataGridSelectionUnit.FullRow;
+
             // Layer Number Column
             var numberColumn = new DataGridTextColumn();
             numberColumn.Header = "#";
-            numberColumn.Width = new DataGridLength(40);
+            numberColumn.Width = new DataGridLength(50, DataGridLengthUnitType.Pixel);
+            numberColumn.MinWidth = 40;
+            numberColumn.MaxWidth = 80;
             numberColumn.IsReadOnly = true;
             numberColumn.Binding = new Binding("LayerNumber");
+            numberColumn.CanUserResize = true;
+
+            var numberStyle = new Style(typeof(TextBlock));
+            numberStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+            numberColumn.ElementStyle = numberStyle;
+
             dataGrid.Columns.Add(numberColumn);
 
             // Material Column
             var materialColumn = new DataGridComboBoxColumn();
             materialColumn.Header = "Material";
-            materialColumn.Width = new DataGridLength(200);
+            materialColumn.Width = new DataGridLength(300, DataGridLengthUnitType.Pixel);
+            materialColumn.MinWidth = 200;
             materialColumn.DisplayMemberPath = "Name";
             materialColumn.SelectedValuePath = "Id";
             materialColumn.ItemsSource = _availableMaterials;
@@ -328,40 +424,60 @@ namespace UFactor
             {
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
             };
+            materialColumn.CanUserResize = true;
             dataGrid.Columns.Add(materialColumn);
 
             // Thickness Column
             var thicknessColumn = new DataGridTextColumn();
             thicknessColumn.Header = "Thickness (mm)";
-            thicknessColumn.Width = new DataGridLength(120);
+            thicknessColumn.Width = new DataGridLength(150, DataGridLengthUnitType.Pixel);
+            thicknessColumn.MinWidth = 100;
             thicknessColumn.Binding = new Binding("Thickness")
             {
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
             };
+            thicknessColumn.CanUserResize = true;
+
+            var thicknessDisplayStyle = new Style(typeof(TextBlock));
+            thicknessDisplayStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Right));
+            thicknessColumn.ElementStyle = thicknessDisplayStyle;
+
+            var thicknessEditStyle = new Style(typeof(TextBox));
+            thicknessEditStyle.Setters.Add(new Setter(TextBox.TextAlignmentProperty, TextAlignment.Right));
+            thicknessColumn.EditingElementStyle = thicknessEditStyle;
+
             dataGrid.Columns.Add(thicknessColumn);
 
             // R-Value Column
             var rvalueColumn = new DataGridTextColumn();
             rvalueColumn.Header = "R-Value";
-            rvalueColumn.Width = new DataGridLength(100);
+            rvalueColumn.Width = new DataGridLength(120, DataGridLengthUnitType.Pixel);
+            rvalueColumn.MinWidth = 80;
             rvalueColumn.IsReadOnly = true;
             rvalueColumn.Binding = new Binding("RValue")
             {
                 StringFormat = "0.###"
             };
+            rvalueColumn.CanUserResize = true;
+
+            var rvalueStyle = new Style(typeof(TextBlock));
+            rvalueStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Right));
+            rvalueColumn.ElementStyle = rvalueStyle;
+
             dataGrid.Columns.Add(rvalueColumn);
 
             // Description Column
             var descriptionColumn = new DataGridTextColumn();
             descriptionColumn.Header = "Description";
             descriptionColumn.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+            descriptionColumn.MinWidth = 150;
             descriptionColumn.Binding = new Binding("Description")
             {
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
             };
+            descriptionColumn.CanUserResize = true;
             dataGrid.Columns.Add(descriptionColumn);
 
-            // Handle selection changes
             dataGrid.SelectionChanged += (s, e) => LayerGrid_SelectionChanged(assembly, dataGrid);
 
             return dataGrid;
@@ -444,7 +560,7 @@ namespace UFactor
             var plusTab = new TabItem();
             plusTab.Header = "+";
             plusTab.Style = (Style)FindResource("AddTabStyle");
-            plusTab.Content = new Grid(); // Empty content
+            plusTab.Content = new Grid();
             MainTabControl.Items.Add(plusTab);
         }
 
@@ -468,14 +584,18 @@ namespace UFactor
         {
             try
             {
+                if (_isLoading)
+                {
+                    return;
+                }
+
                 if (MainTabControl.SelectedItem is TabItem selectedTab)
                 {
-                    // Check if it's the "+" tab
                     if (selectedTab.Header.ToString() == "+")
                     {
-                        // Create new assembly
                         var newAssemblyName = $"Wall Assembly {_nextAssemblyNumber}";
                         CreateNewAssemblyTab(newAssemblyName, "Wall");
+                        MarkAsModified();
                         return;
                     }
 
@@ -494,7 +614,6 @@ namespace UFactor
             {
                 if (sender is Button button)
                 {
-                    // Find the TabItem that contains this button
                     var tabItem = FindParent<TabItem>(button);
                     if (tabItem != null && tabItem.Tag is WallAssembly assembly)
                     {
@@ -511,66 +630,76 @@ namespace UFactor
 
         private void CloseAssemblyTab(TabItem tabItem, WallAssembly assembly)
         {
-            // Don't close if it's the last assembly tab
-            int assemblyTabCount = MainTabControl.Items.Cast<TabItem>().Count(tab => tab.Header.ToString() != "+");
-            if (assemblyTabCount <= 1)
+            try
             {
-                MessageBox.Show("Cannot close the last assembly. Create a new assembly first.",
-                    "Cannot Close", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
+                // Don't close if it's the last assembly tab
+                int assemblyTabCount = MainTabControl.Items.Cast<TabItem>().Count(tab => tab.Header.ToString() != "+");
 
-            // Check for unsaved changes before closing
-            if (_hasUnsavedChanges)
-            {
-                var saveResult = MessageBox.Show(
-                    $"You have unsaved changes in the project.\n\n" +
-                    $"Do you want to save the project before closing assembly '{assembly.Name}'?",
-                    "Unsaved Changes",
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Question);
-
-                switch (saveResult)
+                if (assemblyTabCount <= 1)
                 {
-                    case MessageBoxResult.Yes:
-                        // Try to save the project
-                        if (!SaveCurrentProject())
-                        {
-                            // If save failed or was cancelled, don't close the tab
-                            return;
-                        }
-                        break;
-
-                    case MessageBoxResult.Cancel:
-                        // User cancelled, don't close the tab
-                        return;
-
-                    case MessageBoxResult.No:
-                        // Continue without saving
-                        break;
+                    MessageBox.Show("Cannot close the last assembly. Create a new assembly first.",
+                        "Cannot Close", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
                 }
-            }
 
-            // Final confirmation to close the assembly
-            var result = MessageBox.Show($"Close assembly '{assembly.Name}'?",
-                "Confirm Close", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                // Check for unsaved changes before closing
+                if (_hasUnsavedChanges)
+                {
+                    var saveResult = MessageBox.Show(
+                        $"You have unsaved changes in the project.\n\n" +
+                        $"Do you want to save the project before closing assembly '{assembly.Name}'?",
+                        "Unsaved Changes",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Question);
 
-            if (result == MessageBoxResult.Yes)
-            {
+                    switch (saveResult)
+                    {
+                        case MessageBoxResult.Yes:
+                            if (!SaveCurrentProject())
+                            {
+                                return;
+                            }
+                            break;
+
+                        case MessageBoxResult.Cancel:
+                            return;
+
+                        case MessageBoxResult.No:
+                            break;
+                    }
+                }
+
+                _isLoading = true;
+
+                // Store current selection info before removal
+                bool wasSelected = MainTabControl.SelectedItem == tabItem;
+                int tabIndex = MainTabControl.Items.IndexOf(tabItem);
+
                 // Remove from collections
                 _assemblies.Remove(assembly);
                 MainTabControl.Items.Remove(tabItem);
 
                 // Select another tab if this was selected
-                if (MainTabControl.SelectedItem == null && MainTabControl.Items.Count > 0)
+                if (wasSelected && MainTabControl.Items.Count > 0)
                 {
-                    MainTabControl.SelectedIndex = 0;
+                    int newIndex = Math.Min(tabIndex, MainTabControl.Items.Count - 1);
+                    if (newIndex == MainTabControl.Items.Count - 1 && MainTabControl.Items.Count > 1)
+                    {
+                        newIndex = MainTabControl.Items.Count - 2;
+                    }
+                    MainTabControl.SelectedIndex = newIndex;
                 }
 
-                // Update project state
-                MarkAsModified(); // Mark as modified since we removed an assembly
                 UpdateAssemblyCount();
                 UpdateStatus($"Assembly '{assembly.Name}' closed");
+
+                _isLoading = false;
+            }
+            catch (Exception ex)
+            {
+                _isLoading = false;
+                MessageBox.Show($"Error closing assembly: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -578,16 +707,18 @@ namespace UFactor
         {
             try
             {
-                assembly.Name = newName;
-
-                // Update tab header
-                var tab = MainTabControl.Items.Cast<TabItem>().FirstOrDefault(t => t.Tag == assembly);
-                if (tab != null)
+                if (!_isLoading)
                 {
-                    tab.Header = newName;
-                }
+                    assembly.Name = newName;
 
-                MarkAsModified();
+                    var tab = MainTabControl.Items.Cast<TabItem>().FirstOrDefault(t => t.Tag == assembly);
+                    if (tab != null)
+                    {
+                        tab.Header = newName;
+                    }
+
+                    MarkAsModified();
+                }
             }
             catch (Exception ex)
             {
@@ -599,7 +730,7 @@ namespace UFactor
         {
             try
             {
-                if (comboBox.SelectedItem is ComboBoxItem selectedItem)
+                if (comboBox.SelectedItem is ComboBoxItem selectedItem && !_isLoading)
                 {
                     assembly.Type = selectedItem.Content.ToString();
                     MarkAsModified();
@@ -611,14 +742,27 @@ namespace UFactor
             }
         }
 
-        private void AddLayer_Click(WallAssembly assembly)
+        private void AddLayer_Click_Safe(WallAssembly assembly, Button addButton)
         {
             try
             {
+                // Prevent double-clicking
+                if (addButton.Tag is DateTime lastClick)
+                {
+                    if ((DateTime.Now - lastClick).TotalMilliseconds < 500)
+                    {
+                        return;
+                    }
+                }
+                addButton.Tag = DateTime.Now;
+
+                addButton.IsEnabled = false;
+
                 if (_availableMaterials.Count == 0)
                 {
                     MessageBox.Show("No materials available. Please add materials first using Tools → Manage Materials.",
                         "No Materials", MessageBoxButton.OK, MessageBoxImage.Information);
+                    addButton.IsEnabled = true;
                     return;
                 }
 
@@ -631,12 +775,125 @@ namespace UFactor
                 };
 
                 assembly.AddLayer(newLayer);
-                MarkAsModified();
+
+                if (!_isLoading)
+                {
+                    MarkAsModified();
+                }
+
                 UpdateStatus($"Layer added - Total layers: {assembly.Layers.Count}");
+
+                var timer = new System.Windows.Threading.DispatcherTimer();
+                timer.Interval = TimeSpan.FromMilliseconds(300);
+                timer.Tick += (s, e) => {
+                    addButton.IsEnabled = true;
+                    timer.Stop();
+                };
+                timer.Start();
             }
             catch (Exception ex)
             {
+                addButton.IsEnabled = true;
                 MessageBox.Show($"Error adding layer: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ClearAllLayers_Click(WallAssembly assembly)
+        {
+            try
+            {
+                if (assembly.Layers.Count == 0)
+                {
+                    MessageBox.Show("No layers to clear.", "No Layers",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    $"Are you sure you want to remove all {assembly.Layers.Count} layers from '{assembly.Name}'?\n\nThis action cannot be undone.",
+                    "Clear All Layers",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    assembly.Layers.Clear();
+                    MarkAsModified();
+                    UpdateStatus($"All layers cleared from '{assembly.Name}'");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error clearing layers: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void MoveLayerUp_Click(WallAssembly assembly, Button moveUpButton)
+        {
+            try
+            {
+                var tabItem = MainTabControl.Items.Cast<TabItem>().FirstOrDefault(t => t.Tag == assembly);
+                if (tabItem?.Content is ScrollViewer scrollViewer &&
+                    scrollViewer.Content is Grid grid)
+                {
+                    var dataGrid = FindChild<DataGrid>(grid);
+                    if (dataGrid?.SelectedItem is AssemblyLayer selectedLayer)
+                    {
+                        int currentIndex = assembly.Layers.IndexOf(selectedLayer);
+                        if (currentIndex > 0)
+                        {
+                            assembly.Layers.Move(currentIndex, currentIndex - 1);
+                            MarkAsModified();
+                            UpdateStatus($"Layer moved up");
+                            dataGrid.SelectedItem = selectedLayer;
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Please select a layer to move.", "No Selection",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error moving layer: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void MoveLayerDown_Click(WallAssembly assembly, Button moveDownButton)
+        {
+            try
+            {
+                var tabItem = MainTabControl.Items.Cast<TabItem>().FirstOrDefault(t => t.Tag == assembly);
+                if (tabItem?.Content is ScrollViewer scrollViewer &&
+                    scrollViewer.Content is Grid grid)
+                {
+                    var dataGrid = FindChild<DataGrid>(grid);
+                    if (dataGrid?.SelectedItem is AssemblyLayer selectedLayer)
+                    {
+                        int currentIndex = assembly.Layers.IndexOf(selectedLayer);
+                        if (currentIndex < assembly.Layers.Count - 1)
+                        {
+                            assembly.Layers.Move(currentIndex, currentIndex + 1);
+                            MarkAsModified();
+                            UpdateStatus($"Layer moved down");
+                            dataGrid.SelectedItem = selectedLayer;
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Please select a layer to move.", "No Selection",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error moving layer: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -645,7 +902,6 @@ namespace UFactor
         {
             try
             {
-                // Find the DataGrid for this assembly
                 var tabItem = MainTabControl.Items.Cast<TabItem>().FirstOrDefault(t => t.Tag == assembly);
                 if (tabItem?.Content is ScrollViewer scrollViewer &&
                     scrollViewer.Content is Grid grid)
@@ -681,15 +937,35 @@ namespace UFactor
         {
             try
             {
-                // Find the remove button for this assembly and enable/disable it
                 var tabItem = MainTabControl.Items.Cast<TabItem>().FirstOrDefault(t => t.Tag == assembly);
                 if (tabItem?.Content is ScrollViewer scrollViewer &&
                     scrollViewer.Content is Grid grid)
                 {
                     var removeButton = FindChild<Button>(grid, b => b.Content.ToString() == "Remove Layer");
+                    var moveUpButton = FindChild<Button>(grid, b => b.Content.ToString() == "Move ↑");
+                    var moveDownButton = FindChild<Button>(grid, b => b.Content.ToString() == "Move ↓");
+
+                    bool hasSelection = dataGrid.SelectedItem != null;
+
                     if (removeButton != null)
+                        removeButton.IsEnabled = hasSelection;
+
+                    if (hasSelection && dataGrid.SelectedItem is AssemblyLayer selectedLayer)
                     {
-                        removeButton.IsEnabled = dataGrid.SelectedItem != null;
+                        int selectedIndex = assembly.Layers.IndexOf(selectedLayer);
+
+                        if (moveUpButton != null)
+                            moveUpButton.IsEnabled = selectedIndex > 0;
+
+                        if (moveDownButton != null)
+                            moveDownButton.IsEnabled = selectedIndex < assembly.Layers.Count - 1;
+                    }
+                    else
+                    {
+                        if (moveUpButton != null)
+                            moveUpButton.IsEnabled = false;
+                        if (moveDownButton != null)
+                            moveDownButton.IsEnabled = false;
                     }
                 }
             }
@@ -701,8 +977,10 @@ namespace UFactor
 
         private void Assembly_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            // Mark project as modified for any assembly changes
-            MarkAsModified();
+            if (!_isLoading)
+            {
+                MarkAsModified();
+            }
         }
 
         #endregion
@@ -716,6 +994,7 @@ namespace UFactor
                 var newAssemblyName = $"Wall Assembly {_nextAssemblyNumber}";
                 CreateNewAssemblyTab(newAssemblyName, "Wall");
                 UpdateStatus($"New assembly '{newAssemblyName}' created");
+                MarkAsModified();
             }
             catch (Exception ex)
             {
@@ -820,27 +1099,29 @@ namespace UFactor
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    // Clear all tabs except keep structure
+                    _isLoading = true;
+
                     MainTabControl.Items.Clear();
                     _assemblies.Clear();
 
-                    // Reset project tracking
                     _currentProjectFilePath = null;
                     _currentProjectName = null;
-                    _hasUnsavedChanges = false;
                     _nextAssemblyNumber = 1;
 
-                    // Create new assembly and + tab
                     CreateNewAssemblyTab("Wall Assembly 1", "Wall");
                     AddPlusTab();
 
                     UpdateWindowTitle();
                     UpdateAssemblyCount();
                     UpdateStatus("New project created");
+
+                    _isLoading = false;
+                    _hasUnsavedChanges = false;
                 }
             }
             catch (Exception ex)
             {
+                _isLoading = false;
                 MessageBox.Show($"Error creating new project: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -850,16 +1131,15 @@ namespace UFactor
         {
             try
             {
+                _isLoading = true;
+
                 var project = ProjectService.LoadProject(filePath);
 
-                // Clear current tabs and assemblies
                 MainTabControl.Items.Clear();
                 _assemblies.Clear();
 
-                // Reset assembly counter
                 _nextAssemblyNumber = 1;
 
-                // Load assemblies from project
                 bool hasAssemblies = false;
                 foreach (var assemblyData in project.Assemblies)
                 {
@@ -867,29 +1147,26 @@ namespace UFactor
                     assembly.PropertyChanged += Assembly_PropertyChanged;
                     _assemblies.Add(assembly);
 
-                    // Create tab for each assembly
-                    CreateNewAssemblyTab(assembly.Name, assembly.Type);
+                    CreateAssemblyTab(assembly);
                     hasAssemblies = true;
                 }
 
-                // If no assemblies in project, create default one
                 if (!hasAssemblies)
                 {
                     CreateNewAssemblyTab("Wall Assembly 1", "Wall");
                 }
 
-                // Add the + tab
                 AddPlusTab();
 
-                // Update project tracking
                 _currentProjectFilePath = filePath;
                 _currentProjectName = project.ProjectName;
-                _hasUnsavedChanges = false;
 
-                // Update UI
                 UpdateWindowTitle();
                 UpdateAssemblyCount();
                 UpdateStatus($"Project loaded: {_currentProjectName}");
+
+                _isLoading = false;
+                _hasUnsavedChanges = false;
 
                 MessageBox.Show($"Project '{project.ProjectName}' loaded successfully!\n\n" +
                     $"Assemblies loaded: {project.Assemblies.Count}\n" +
@@ -899,6 +1176,7 @@ namespace UFactor
             }
             catch (Exception ex)
             {
+                _isLoading = false;
                 MessageBox.Show($"Error loading project: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -906,24 +1184,143 @@ namespace UFactor
 
         private ProjectData CreateProjectData()
         {
-            var project = new ProjectData
+            try
             {
-                ProjectName = !string.IsNullOrEmpty(_currentProjectName) ? _currentProjectName : "Untitled Project",
-                Description = "UFactor building thermal analysis project",
-                CreatedDate = DateTime.Now,
-                LastModified = DateTime.Now,
-                Version = "1.0"
-            };
+                var project = new ProjectData
+                {
+                    ProjectName = !string.IsNullOrEmpty(_currentProjectName) ? _currentProjectName : "Untitled Project",
+                    Description = "UFactor building thermal analysis project",
+                    CreatedDate = DateTime.Now,
+                    LastModified = DateTime.Now,
+                    Version = "1.0"
+                };
 
-            // Convert assemblies to serializable format
-            foreach (var assembly in _assemblies)
-            {
-                project.Assemblies.Add(WallAssemblyData.FromWallAssembly(assembly));
+                if (_assemblies != null)
+                {
+                    foreach (var assembly in _assemblies)
+                    {
+                        var assemblyData = WallAssemblyData.FromWallAssembly(assembly);
+                        project.Assemblies.Add(assemblyData);
+                    }
+                }
+
+                return project;
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error creating project data: {ex.Message}", "Data Creation Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return null;
+            }
+        }
+        // Option 1: Add "Open in New Window" menu item
+        private void OpenProjectInNewWindow_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var openFileDialog = new OpenFileDialog
+                {
+                    Title = "Open UFactor Project in New Window",
+                    Filter = ProjectService.GetProjectFilter(),
+                    DefaultExt = ProjectService.GetDefaultExtension(),
+                    InitialDirectory = ProjectService.GetDefaultProjectsFolder()
+                };
 
-            return project;
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    // Create and show new window
+                    var newWindow = new MainWindow();
+                    newWindow.LoadProjectDirectly(openFileDialog.FileName);
+                    newWindow.Show();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening project in new window: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
+        // Add this method to load a project directly (for new windows)
+        public void LoadProjectDirectly(string filePath)
+        {
+            try
+            {
+                LoadProject(filePath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading project: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // Option 2: Modify existing Open to ask what user wants
+        private void OpenProject_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var openFileDialog = new OpenFileDialog
+                {
+                    Title = "Open UFactor Project",
+                    Filter = ProjectService.GetProjectFilter(),
+                    DefaultExt = ProjectService.GetDefaultExtension(),
+                    InitialDirectory = ProjectService.GetDefaultProjectsFolder()
+                };
+
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    // Ask user how they want to open the project
+                    var choice = MessageBox.Show(
+                        "How would you like to open this project?\n\n" +
+                        "Yes = Replace current project\n" +
+                        "No = Open in new window\n" +
+                        "Cancel = Don't open",
+                        "Open Project",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Question);
+
+                    switch (choice)
+                    {
+                        case MessageBoxResult.Yes:
+                            // Replace current project (existing behavior)
+                            if (_hasUnsavedChanges)
+                            {
+                                var result = MessageBox.Show("You have unsaved changes. Do you want to save before opening a new project?",
+                                    "Unsaved Changes", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+
+                                if (result == MessageBoxResult.Yes)
+                                {
+                                    if (!SaveCurrentProject())
+                                        return;
+                                }
+                                else if (result == MessageBoxResult.Cancel)
+                                {
+                                    return;
+                                }
+                            }
+                            LoadProject(openFileDialog.FileName);
+                            break;
+
+                        case MessageBoxResult.No:
+                            // Open in new window
+                            var newWindow = new MainWindow();
+                            newWindow.LoadProjectDirectly(openFileDialog.FileName);
+                            newWindow.Show();
+                            break;
+
+                        case MessageBoxResult.Cancel:
+                            // Do nothing
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening project: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         private bool SaveCurrentProject()
         {
             try
@@ -935,17 +1332,21 @@ namespace UFactor
                 else
                 {
                     var project = CreateProjectData();
+                    if (project == null)
+                    {
+                        return false;
+                    }
+
                     ProjectService.SaveProject(project, _currentProjectFilePath);
 
-                    _hasUnsavedChanges = false;
-                    UpdateWindowTitle();
+                    ResetUnsavedState();
                     UpdateStatus($"Project saved: {_currentProjectName}");
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving project: {ex.Message}", "Error",
+                MessageBox.Show($"Error saving project: {ex.Message}", "Save Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
@@ -967,13 +1368,18 @@ namespace UFactor
                 if (saveFileDialog.ShowDialog() == true)
                 {
                     var project = CreateProjectData();
+                    if (project == null)
+                    {
+                        return false;
+                    }
+
                     project.ProjectName = System.IO.Path.GetFileNameWithoutExtension(saveFileDialog.FileName);
 
                     ProjectService.SaveProject(project, saveFileDialog.FileName);
 
                     _currentProjectFilePath = saveFileDialog.FileName;
                     _currentProjectName = project.ProjectName;
-                    _hasUnsavedChanges = false;
+                    ResetUnsavedState();
 
                     UpdateWindowTitle();
                     UpdateStatus($"Project saved as: {_currentProjectName}");
@@ -983,56 +1389,24 @@ namespace UFactor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving project: {ex.Message}", "Error",
+                MessageBox.Show($"Error saving project: {ex.Message}", "Save Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
 
-        private void OpenProject_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (_hasUnsavedChanges)
-                {
-                    var result = MessageBox.Show("You have unsaved changes. Do you want to save before opening a new project?",
-                        "Unsaved Changes", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-
-                    if (result == MessageBoxResult.Yes)
-                    {
-                        if (!SaveCurrentProject())
-                            return;
-                    }
-                    else if (result == MessageBoxResult.Cancel)
-                    {
-                        return;
-                    }
-                }
-
-                var openFileDialog = new OpenFileDialog
-                {
-                    Title = "Open UFactor Project",
-                    Filter = ProjectService.GetProjectFilter(),
-                    DefaultExt = ProjectService.GetDefaultExtension(),
-                    InitialDirectory = ProjectService.GetDefaultProjectsFolder()
-                };
-
-                if (openFileDialog.ShowDialog() == true)
-                {
-                    LoadProject(openFileDialog.FileName);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error opening project: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
 
         private void SaveProject_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                if (_assemblies == null || _assemblies.Count == 0)
+                {
+                    MessageBox.Show("No assemblies to save. Please create at least one assembly before saving.",
+                        "Nothing to Save", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
                 SaveCurrentProject();
             }
             catch (Exception ex)
@@ -1046,6 +1420,13 @@ namespace UFactor
         {
             try
             {
+                if (_assemblies == null || _assemblies.Count == 0)
+                {
+                    MessageBox.Show("No assemblies to save. Please create at least one assembly before saving.",
+                        "Nothing to Save", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
                 SaveProjectAs();
             }
             catch (Exception ex)
@@ -1071,11 +1452,17 @@ namespace UFactor
 
         private void MarkAsModified()
         {
-            if (!_hasUnsavedChanges)
+            if (!_isLoading && !_hasUnsavedChanges)
             {
                 _hasUnsavedChanges = true;
                 UpdateWindowTitle();
             }
+        }
+
+        private void ResetUnsavedState()
+        {
+            _hasUnsavedChanges = false;
+            UpdateWindowTitle();
         }
 
         #endregion
@@ -1117,12 +1504,8 @@ namespace UFactor
                 materialWindow.Owner = this;
                 var result = materialWindow.ShowDialog();
 
-                // Refresh materials after closing material management
                 LoadAvailableMaterials();
-
-                // Update material columns in all DataGrids
                 UpdateAllMaterialColumns();
-
                 UpdateStatus("Materials updated");
             }
             catch (Exception ex)
