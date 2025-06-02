@@ -346,7 +346,7 @@ namespace UFactor
             subtitleText.Text = "Assembly Layers (Outside to Inside)";
             subtitleText.FontSize = 13;
             subtitleText.Foreground = (SolidColorBrush)FindResource("TextSecondary");
-            subtitleText.Margin = new Thickness(0, 30, 0, 16); // Changed from 0,0,0,16 to 0,30,0,16
+            subtitleText.Margin = new Thickness(0, 30, 10, 25);
             Grid.SetRow(subtitleText, 1); // Changed from row 0 to row 1
             grid.Children.Add(subtitleText);
 
@@ -505,7 +505,7 @@ namespace UFactor
             var thicknessColumn = new DataGridTextColumn();
             thicknessColumn.Header = "Thickness (mm)";
             thicknessColumn.Width = new DataGridLength(130, DataGridLengthUnitType.Pixel); // Slightly smaller to make room
-            thicknessColumn.MinWidth = 100; 
+            thicknessColumn.MinWidth = 120; 
             thicknessColumn.Binding = new Binding("Thickness")
             {
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
@@ -574,8 +574,8 @@ namespace UFactor
             var gradientBrush = new LinearGradientBrush();
             gradientBrush.StartPoint = new Point(0, 0);
             gradientBrush.EndPoint = new Point(1, 1);
-            gradientBrush.GradientStops.Add(new GradientStop(Color.FromRgb(227, 242, 253), 0.0)); // Light blue
-            gradientBrush.GradientStops.Add(new GradientStop(Color.FromRgb(187, 222, 251), 1.0)); // Darker blue
+            gradientBrush.GradientStops.Add(new GradientStop(Color.FromRgb(241, 248, 250), 0.0)); // Dark blue
+            gradientBrush.GradientStops.Add(new GradientStop(Color.FromRgb(241, 248, 250), 1.0)); // Darker blue
 
             card.Background = gradientBrush;
             card.BorderBrush = (SolidColorBrush)FindResource("PrimaryBlue");

@@ -13,8 +13,8 @@
 
     <Window.Resources>
         <!-- Enhanced Color Scheme -->
-        <SolidColorBrush x:Key="PrimaryBlue" Color="#2196F3"/>
-        <SolidColorBrush x:Key="PrimaryBlueDark" Color="#1976D2"/>
+        <SolidColorBrush x:Key="PrimaryBlue" Color="#2C3863"/>
+        <SolidColorBrush x:Key="PrimaryBlueDark" Color="#2C3863"/>
         <SolidColorBrush x:Key="AccentOrange" Color="#FF9800"/>
         <SolidColorBrush x:Key="BackgroundGray" Color="#F5F5F5"/>
         <SolidColorBrush x:Key="SurfaceWhite" Color="#FFFFFF"/>
@@ -397,20 +397,20 @@
 
         <!-- Enhanced Menu Style -->
         <Style x:Key="ModernMenu" TargetType="Menu">
-            <Setter Property="Background" Value="{StaticResource HeaderGradient}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="#a1d3ff"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontWeight" Value="Bold"/>
           <!-- <Setter Property="Effect" Value="{StaticResource CardShadow}"/>-->
         </Style>
 
         <Style x:Key="ModernMenuItem" TargetType="MenuItem">
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Foreground" Value="Black"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="Background" Value="{StaticResource HeaderGradient}"/>
+            <Setter Property="Background" Value="#a1d3ff"/>
             <Style.Triggers>
                 <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#1976D2"/>
+                    <Setter Property="Background" Value="#a1d3ff"/>
                     <Setter Property="Foreground" Value="Black"/>
                 </Trigger>
             </Style.Triggers>
@@ -441,7 +441,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Logo and Title Section -->
-            <Border Grid.Column="0" Background="{StaticResource HeaderGradient}" Padding="16,8"
+            <Border Grid.Column="0" Background="#a1d3ff" Padding="16,8"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <!-- Logo Placeholder - You can replace this with your actual logo -->
@@ -454,17 +454,17 @@
                     </Border>
                     <StackPanel>
                         <TextBlock Text="U-Factor Calculator" FontSize="16" FontWeight="Bold" 
-                       Foreground="White" Margin="0,-2,0,0"
+                       Foreground="#00386a" Margin="0,-2,0,0"
                        UseLayoutRounding="True" SnapsToDevicePixels="True"
                        TextOptions.TextFormattingMode="Display"
                        TextOptions.TextRenderingMode="ClearType"/>
                         <TextBlock Text="Building Thermal Performance Analysis" FontSize="10" 
-                       Foreground="White" Opacity="0.9"
+                       Foreground="#00386a" Opacity="0.9"
                        UseLayoutRounding="True" SnapsToDevicePixels="True"
                        TextOptions.TextFormattingMode="Display"
                        TextOptions.TextRenderingMode="ClearType"/> 
                         <TextBlock Text="FIU - Final International University (V1.0.0)" FontSize="10" 
-                       Foreground="White" Opacity="0.9"
+                       Foreground="#00386a" Opacity="0.9"
                        UseLayoutRounding="True" SnapsToDevicePixels="True"
                        TextOptions.TextFormattingMode="Display"
                        TextOptions.TextRenderingMode="ClearType"/>
@@ -544,7 +544,7 @@
                    TextOptions.TextRenderingMode="ClearType"/>
             </StatusBarItem>
          
-            <StatusBarItem HorizontalAlignment="Left">
+            <StatusBarItem HorizontalAlignment="Center">
                 <TextBlock Text="@FIU_Copyright(2025)" Foreground="{StaticResource TextSecondary}" FontStyle="Italic"
                    UseLayoutRounding="True" SnapsToDevicePixels="True"
                    TextOptions.TextFormattingMode="Display"
