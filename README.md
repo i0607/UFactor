@@ -107,8 +107,10 @@ UFactor/
 │   └── MaterialService.cs
 ├── Data/             # Material database
 └── Assets/           # Images and resources
-Key Technologies
 
+
+**Key Technologies
+**
 Framework: .NET Framework 4.7.2+ / .NET 6.0+
 UI Framework: WPF (Windows Presentation Foundation)
 Pattern: MVVM (Model-View-ViewModel)
