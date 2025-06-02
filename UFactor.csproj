@@ -1,15 +1,37 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows</TargetFramework>
 		<UseWPF>true</UseWPF>
 		<Nullable>disable</Nullable>
 		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+		<!-- Application Icon - Commented out until you have a .ico file -->
+		<!-- <ApplicationIcon>Assets\logo.ico</ApplicationIcon> -->
+		<!-- Application Metadata -->
+		<AssemblyTitle>U-Factor Calculator</AssemblyTitle>
+		<AssemblyDescription>Building Thermal Performance Analysis Tool</AssemblyDescription>
+		<AssemblyCompany>FIU - Final International University (V1.0.0)</AssemblyCompany>
+		<AssemblyProduct>U-Factor Calculator</AssemblyProduct>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
 	</PropertyGroup>
-
 	<ItemGroup>
-	  <PackageReference Include="System.Text.Json" Version="9.0.5" />
+	  <None Remove="Assets\logo2.png" />
 	</ItemGroup>
-
+	<ItemGroup>
+		<PackageReference Include="System.Text.Json" Version="9.0.5" />
+	</ItemGroup>
+	<!-- Logo and Asset Resources -->
+	<ItemGroup>
+		<Resource Include="Assets\logo.png" Condition="Exists('Assets\logo.png')">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Resource>
+		<Resource Include="Assets\logo2.png">
+		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		</Resource>
+	</ItemGroup>
+	<!-- Ensure Assets folder is created during build -->
+	<Target Name="CreateAssetsFolder" BeforeTargets="Build">
+		<MakeDir Directories="Assets" Condition="!Exists('Assets')" />
+	</Target>
 </Project>

@@ -12,6 +12,7 @@ using Microsoft.Win32;
 using UFactor.Models;
 using UFactor.Views;
 using UFactor.Services;
+using System.Windows.Controls.Primitives;
 
 namespace UFactor
 {
@@ -179,20 +180,23 @@ namespace UFactor
             }
         }
 
+        #region Enhanced UI Creation Methods
+
         private ScrollViewer CreateAssemblyContent(WallAssembly assembly)
         {
             var scrollViewer = new ScrollViewer();
 
-            // Enable smooth scrolling
+            // Enhanced scrolling properties
             scrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             scrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
             scrollViewer.CanContentScroll = false;
             scrollViewer.PanningMode = PanningMode.Both;
             scrollViewer.IsManipulationEnabled = true;
             scrollViewer.PreviewMouseWheel += ScrollViewer_PreviewMouseWheel;
+            scrollViewer.Background = Brushes.Transparent;
 
             var mainGrid = new Grid();
-            mainGrid.Margin = new Thickness(10);
+            mainGrid.Margin = new Thickness(20);
 
             // Define row definitions
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -200,62 +204,76 @@ namespace UFactor
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // Assembly Header
-            var headerGrid = CreateAssemblyHeader(assembly);
-            Grid.SetRow(headerGrid, 0);
-            mainGrid.Children.Add(headerGrid);
+            // Assembly Header Card
+            var headerCard = CreateAssemblyHeaderCard(assembly);
+            Grid.SetRow(headerCard, 0);
+            mainGrid.Children.Add(headerCard);
 
-            // Layer Management
-            var layerManagementGrid = CreateLayerManagement(assembly);
-            Grid.SetRow(layerManagementGrid, 1);
-            mainGrid.Children.Add(layerManagementGrid);
+            // Layer Management Card
+            var layerManagementCard = CreateLayerManagementCard(assembly);
+            Grid.SetRow(layerManagementCard, 1);
+            mainGrid.Children.Add(layerManagementCard);
 
-            // Layers DataGrid
-            var layersGrid = CreateLayersDataGrid(assembly);
-            Grid.SetRow(layersGrid, 2);
-            mainGrid.Children.Add(layersGrid);
+            // Layers DataGrid Card
+            var layersCard = CreateLayersDataGridCard(assembly);
+            Grid.SetRow(layersCard, 2);
+            mainGrid.Children.Add(layersCard);
 
-            // Results Panel
-            var resultsPanel = CreateResultsPanel(assembly);
-            Grid.SetRow(resultsPanel, 3);
-            mainGrid.Children.Add(resultsPanel);
+            // Results Panel Card
+            var resultsCard = CreateResultsCard(assembly);
+            Grid.SetRow(resultsCard, 3);
+            mainGrid.Children.Add(resultsCard);
 
             scrollViewer.Content = mainGrid;
             return scrollViewer;
         }
 
-        private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        private Border CreateAssemblyHeaderCard(WallAssembly assembly)
         {
-            if (sender is ScrollViewer scrollViewer)
-            {
-                scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta / 3.0);
-                e.Handled = true;
-            }
-        }
+            var card = new Border();
+            card.Style = (Style)FindResource("CardPanel");
+            card.Margin = new Thickness(0, 0, 0, 16);
 
-        private Grid CreateAssemblyHeader(WallAssembly assembly)
-        {
             var grid = new Grid();
-            grid.Margin = new Thickness(0, 0, 0, 20);
-
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+
+            // Header Title
+            var titleBlock = new TextBlock();
+            titleBlock.Text = "Assembly Configuration";
+            titleBlock.FontSize = 18;
+            titleBlock.FontWeight = FontWeights.SemiBold;
+            titleBlock.Foreground = (SolidColorBrush)FindResource("TextPrimary");
+            titleBlock.Margin = new Thickness(0, 0, 0, 16);
+            Grid.SetColumnSpan(titleBlock, 4);
+            grid.Children.Add(titleBlock);
+
+            // Create a sub-grid for the form elements
+            var formGrid = new Grid();
+            formGrid.Margin = new Thickness(0, 40, 0, 0); // Offset for title
+            formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
 
             // Assembly Name Label
             var nameLabel = new TextBlock();
             nameLabel.Text = "Assembly Name:";
             nameLabel.VerticalAlignment = VerticalAlignment.Center;
-            nameLabel.Margin = new Thickness(0, 0, 10, 0);
+            nameLabel.Margin = new Thickness(0, 0, 12, 0);
             nameLabel.FontWeight = FontWeights.SemiBold;
+            nameLabel.Foreground = (SolidColorBrush)FindResource("TextPrimary");
             Grid.SetColumn(nameLabel, 0);
-            grid.Children.Add(nameLabel);
+            formGrid.Children.Add(nameLabel);
 
             // Assembly Name TextBox
             var nameTextBox = new TextBox();
             nameTextBox.Text = assembly.Name;
             nameTextBox.VerticalAlignment = VerticalAlignment.Center;
+            nameTextBox.Style = (Style)FindResource("ModernTextBox");
+            nameTextBox.Margin = new Thickness(0, 0, 20, 0);
             nameTextBox.DataContext = assembly;
             nameTextBox.SetBinding(TextBox.TextProperty, new Binding("Name")
             {
@@ -263,20 +281,22 @@ namespace UFactor
             });
             nameTextBox.TextChanged += (s, e) => AssemblyNameChanged(assembly, nameTextBox.Text);
             Grid.SetColumn(nameTextBox, 1);
-            grid.Children.Add(nameTextBox);
+            formGrid.Children.Add(nameTextBox);
 
             // Type Label
             var typeLabel = new TextBlock();
             typeLabel.Text = "Type:";
             typeLabel.VerticalAlignment = VerticalAlignment.Center;
-            typeLabel.Margin = new Thickness(20, 0, 10, 0);
+            typeLabel.Margin = new Thickness(0, 0, 12, 0);
             typeLabel.FontWeight = FontWeights.SemiBold;
+            typeLabel.Foreground = (SolidColorBrush)FindResource("TextPrimary");
             Grid.SetColumn(typeLabel, 2);
-            grid.Children.Add(typeLabel);
+            formGrid.Children.Add(typeLabel);
 
             // Type ComboBox
             var typeComboBox = new ComboBox();
             typeComboBox.VerticalAlignment = VerticalAlignment.Center;
+            typeComboBox.Style = CreateModernComboBoxStyle();
             typeComboBox.Items.Add(new ComboBoxItem { Content = "Wall" });
             typeComboBox.Items.Add(new ComboBoxItem { Content = "Roof" });
             typeComboBox.Items.Add(new ComboBoxItem { Content = "Floor" });
@@ -293,38 +313,53 @@ namespace UFactor
 
             typeComboBox.SelectionChanged += (s, e) => AssemblyTypeChanged(assembly, typeComboBox);
             Grid.SetColumn(typeComboBox, 3);
-            grid.Children.Add(typeComboBox);
+            formGrid.Children.Add(typeComboBox);
 
-            return grid;
+            Grid.SetColumnSpan(formGrid, 4);
+            grid.Children.Add(formGrid);
+
+            card.Child = grid;
+            return card;
         }
 
-        private Grid CreateLayerManagement(WallAssembly assembly)
+        private Border CreateLayerManagementCard(WallAssembly assembly)
         {
-            var grid = new Grid();
-            grid.Margin = new Thickness(0, 0, 0, 20);
+            var card = new Border();
+            card.Style = (Style)FindResource("CardPanel");
+            card.Margin = new Thickness(0, 0, 0, 16);
 
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             // Title
             var titleText = new TextBlock();
-            titleText.Text = "Assembly Layers (Outside to Inside):";
-            titleText.FontSize = 14;
+            titleText.Text = "Layer Management";
+            titleText.FontSize = 18;
             titleText.FontWeight = FontWeights.SemiBold;
-            titleText.VerticalAlignment = VerticalAlignment.Center;
-            Grid.SetColumn(titleText, 0);
+            titleText.Foreground = (SolidColorBrush)FindResource("TextPrimary");
+            titleText.Margin = new Thickness(0, 0, 0, 8);
+            Grid.SetRow(titleText, 0);
             grid.Children.Add(titleText);
 
-            // Button Panel
-            var buttonPanel = new StackPanel();
+            var subtitleText = new TextBlock();
+            subtitleText.Text = "Assembly Layers (Outside to Inside)";
+            subtitleText.FontSize = 13;
+            subtitleText.Foreground = (SolidColorBrush)FindResource("TextSecondary");
+            subtitleText.Margin = new Thickness(0, 30, 0, 16); // Changed from 0,0,0,16 to 0,30,0,16
+            Grid.SetRow(subtitleText, 1); // Changed from row 0 to row 1
+            grid.Children.Add(subtitleText);
+
+            // Button Panel with enhanced styling
+            var buttonPanel = new WrapPanel();
             buttonPanel.Orientation = Orientation.Horizontal;
+            buttonPanel.Margin = new Thickness(0, 40, 0, 0);
 
             // Add Layer Button
             var addButton = new Button();
             addButton.Content = "Add Layer";
-            addButton.Width = 100;
-            addButton.Margin = new Thickness(5, 0, 5, 0);
-            addButton.Background = Brushes.LightGreen;
+            addButton.Style = (Style)FindResource("SuccessButton");
+            addButton.Width = 120;
             addButton.Tag = DateTime.Now;
             addButton.Click += (s, e) => AddLayer_Click_Safe(assembly, addButton);
             buttonPanel.Children.Add(addButton);
@@ -332,9 +367,8 @@ namespace UFactor
             // Remove Layer Button
             var removeButton = new Button();
             removeButton.Content = "Remove Layer";
-            removeButton.Width = 100;
-            removeButton.Margin = new Thickness(5, 0, 5, 0);
-            removeButton.Background = Brushes.LightCoral;
+            removeButton.Style = (Style)FindResource("ErrorButton");
+            removeButton.Width = 120;
             removeButton.IsEnabled = false;
             removeButton.Tag = assembly;
             removeButton.Click += (s, e) => RemoveLayer_Click(assembly, removeButton);
@@ -343,18 +377,16 @@ namespace UFactor
             // Clear All Layers Button
             var clearAllButton = new Button();
             clearAllButton.Content = "Clear All";
-            clearAllButton.Width = 100;
-            clearAllButton.Margin = new Thickness(5, 0, 5, 0);
-            clearAllButton.Background = Brushes.Orange;
+            clearAllButton.Style = (Style)FindResource("WarningButton");
+            clearAllButton.Width = 120;
             clearAllButton.Click += (s, e) => ClearAllLayers_Click(assembly);
             buttonPanel.Children.Add(clearAllButton);
 
             // Move Layer Up Button
             var moveUpButton = new Button();
             moveUpButton.Content = "Move ↑";
-            moveUpButton.Width = 80;
-            moveUpButton.Margin = new Thickness(5, 0, 5, 0);
-            moveUpButton.Background = Brushes.LightBlue;
+            moveUpButton.Style = (Style)FindResource("ModernButton");
+            moveUpButton.Width = 100;
             moveUpButton.IsEnabled = false;
             moveUpButton.Click += (s, e) => MoveLayerUp_Click(assembly, moveUpButton);
             buttonPanel.Children.Add(moveUpButton);
@@ -362,61 +394,103 @@ namespace UFactor
             // Move Layer Down Button
             var moveDownButton = new Button();
             moveDownButton.Content = "Move ↓";
-            moveDownButton.Width = 80;
-            moveDownButton.Margin = new Thickness(5, 0, 5, 0);
-            moveDownButton.Background = Brushes.LightBlue;
+            moveDownButton.Style = (Style)FindResource("ModernButton");
+            moveDownButton.Width = 100;
             moveDownButton.IsEnabled = false;
             moveDownButton.Click += (s, e) => MoveLayerDown_Click(assembly, moveDownButton);
             buttonPanel.Children.Add(moveDownButton);
 
-            Grid.SetColumn(buttonPanel, 1);
+            Grid.SetRow(buttonPanel, 1);
             grid.Children.Add(buttonPanel);
 
-            return grid;
+            card.Child = grid;
+            return card;
         }
 
-        private DataGrid CreateLayersDataGrid(WallAssembly assembly)
+        private Border CreateLayersDataGridCard(WallAssembly assembly)
+        {
+            var card = new Border();
+            card.Style = (Style)FindResource("CardPanel");
+            card.Margin = new Thickness(0, 0, 0, 16);
+
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            // Title
+            var titleText = new TextBlock();
+            titleText.Text = "Assembly Layers";
+            titleText.FontSize = 18;
+            titleText.FontWeight = FontWeights.SemiBold;
+            titleText.Foreground = (SolidColorBrush)FindResource("TextPrimary");
+            titleText.Margin = new Thickness(0, 0, 0, 16);
+            Grid.SetRow(titleText, 0);
+            grid.Children.Add(titleText);
+
+            // Enhanced DataGrid
+            var dataGrid = CreateEnhancedDataGrid(assembly);
+            Grid.SetRow(dataGrid, 1);
+            grid.Children.Add(dataGrid);
+
+            card.Child = grid;
+            return card;
+        }
+
+        private DataGrid CreateEnhancedDataGrid(WallAssembly assembly)
         {
             var dataGrid = new DataGrid();
             dataGrid.AutoGenerateColumns = false;
             dataGrid.CanUserAddRows = false;
             dataGrid.CanUserDeleteRows = false;
             dataGrid.CanUserResizeColumns = true;
-            dataGrid.CanUserReorderColumns = true;
+            dataGrid.CanUserReorderColumns = false;
             dataGrid.CanUserSortColumns = false;
-            dataGrid.GridLinesVisibility = DataGridGridLinesVisibility.Horizontal;
+            dataGrid.GridLinesVisibility = DataGridGridLinesVisibility.None;
             dataGrid.HeadersVisibility = DataGridHeadersVisibility.Column;
-            dataGrid.Margin = new Thickness(0, 0, 0, 20);
-            dataGrid.MinHeight = 200;
+            dataGrid.MinHeight = 250;
             dataGrid.ItemsSource = assembly.Layers;
 
-            // Better row styling
+            // Enhanced styling
+            dataGrid.Background = Brushes.White;
             dataGrid.RowBackground = Brushes.White;
-            dataGrid.AlternatingRowBackground = new SolidColorBrush(Color.FromRgb(248, 248, 248));
+            dataGrid.AlternatingRowBackground = new SolidColorBrush(Color.FromRgb(248, 250, 252));
             dataGrid.SelectionMode = DataGridSelectionMode.Single;
             dataGrid.SelectionUnit = DataGridSelectionUnit.FullRow;
+            dataGrid.BorderThickness = new Thickness(1);
+            dataGrid.BorderBrush = (SolidColorBrush)FindResource("BorderLight");
+            dataGrid.RowHeight = 40;
+
+            // Enhanced column header style
+            var headerStyle = new Style(typeof(DataGridColumnHeader));
+            headerStyle.Setters.Add(new Setter(DataGridColumnHeader.BackgroundProperty, FindResource("PrimaryBlue")));
+            headerStyle.Setters.Add(new Setter(DataGridColumnHeader.ForegroundProperty, Brushes.White));
+            headerStyle.Setters.Add(new Setter(DataGridColumnHeader.FontWeightProperty, FontWeights.SemiBold));
+            headerStyle.Setters.Add(new Setter(DataGridColumnHeader.PaddingProperty, new Thickness(12, 8, 12, 8)));
+            headerStyle.Setters.Add(new Setter(DataGridColumnHeader.BorderThicknessProperty, new Thickness(0, 0, 1, 0)));
+            headerStyle.Setters.Add(new Setter(DataGridColumnHeader.BorderBrushProperty, FindResource("PrimaryBlueDark")));
+            dataGrid.ColumnHeaderStyle = headerStyle;
 
             // Layer Number Column
             var numberColumn = new DataGridTextColumn();
             numberColumn.Header = "#";
-            numberColumn.Width = new DataGridLength(50, DataGridLengthUnitType.Pixel);
-            numberColumn.MinWidth = 40;
-            numberColumn.MaxWidth = 80;
+            numberColumn.Width = new DataGridLength(60, DataGridLengthUnitType.Pixel);
             numberColumn.IsReadOnly = true;
             numberColumn.Binding = new Binding("LayerNumber");
-            numberColumn.CanUserResize = true;
 
             var numberStyle = new Style(typeof(TextBlock));
             numberStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+            numberStyle.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+            numberStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, FindResource("PrimaryBlue")));
             numberColumn.ElementStyle = numberStyle;
 
             dataGrid.Columns.Add(numberColumn);
 
             // Material Column
+            // Material Column
             var materialColumn = new DataGridComboBoxColumn();
             materialColumn.Header = "Material";
-            materialColumn.Width = new DataGridLength(300, DataGridLengthUnitType.Pixel);
-            materialColumn.MinWidth = 200;
+            materialColumn.Width = new DataGridLength(400, DataGridLengthUnitType.Pixel); // Changed from 300 to 400
+            materialColumn.MinWidth = 300; // Added minimum width
             materialColumn.DisplayMemberPath = "Name";
             materialColumn.SelectedValuePath = "Id";
             materialColumn.ItemsSource = _availableMaterials;
@@ -424,44 +498,48 @@ namespace UFactor
             {
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
             };
-            materialColumn.CanUserResize = true;
             dataGrid.Columns.Add(materialColumn);
 
             // Thickness Column
+            // Thickness Column
             var thicknessColumn = new DataGridTextColumn();
             thicknessColumn.Header = "Thickness (mm)";
-            thicknessColumn.Width = new DataGridLength(150, DataGridLengthUnitType.Pixel);
-            thicknessColumn.MinWidth = 100;
+            thicknessColumn.Width = new DataGridLength(130, DataGridLengthUnitType.Pixel); // Slightly smaller to make room
+            thicknessColumn.MinWidth = 100; 
             thicknessColumn.Binding = new Binding("Thickness")
             {
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
             };
-            thicknessColumn.CanUserResize = true;
 
             var thicknessDisplayStyle = new Style(typeof(TextBlock));
             thicknessDisplayStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Right));
+            thicknessDisplayStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(8, 0,8,0)));
             thicknessColumn.ElementStyle = thicknessDisplayStyle;
 
             var thicknessEditStyle = new Style(typeof(TextBox));
             thicknessEditStyle.Setters.Add(new Setter(TextBox.TextAlignmentProperty, TextAlignment.Right));
+            thicknessEditStyle.Setters.Add(new Setter(TextBox.PaddingProperty, new Thickness(8, 4, 8, 4)));
             thicknessColumn.EditingElementStyle = thicknessEditStyle;
 
             dataGrid.Columns.Add(thicknessColumn);
 
             // R-Value Column
+            // R-Value Column
             var rvalueColumn = new DataGridTextColumn();
             rvalueColumn.Header = "R-Value";
-            rvalueColumn.Width = new DataGridLength(120, DataGridLengthUnitType.Pixel);
+            rvalueColumn.Width = new DataGridLength(100, DataGridLengthUnitType.Pixel); // Slightly smaller
             rvalueColumn.MinWidth = 80;
             rvalueColumn.IsReadOnly = true;
             rvalueColumn.Binding = new Binding("RValue")
             {
                 StringFormat = "0.###"
             };
-            rvalueColumn.CanUserResize = true;
 
             var rvalueStyle = new Style(typeof(TextBlock));
             rvalueStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Right));
+            rvalueStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(8, 0, 8, 0)));
+            rvalueStyle.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+            rvalueStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, FindResource("Success")));
             rvalueColumn.ElementStyle = rvalueStyle;
 
             dataGrid.Columns.Add(rvalueColumn);
@@ -469,13 +547,17 @@ namespace UFactor
             // Description Column
             var descriptionColumn = new DataGridTextColumn();
             descriptionColumn.Header = "Description";
-            descriptionColumn.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
-            descriptionColumn.MinWidth = 150;
+            descriptionColumn.Width = new DataGridLength(150, DataGridLengthUnitType.Star);
+            descriptionColumn.MinWidth = 100;
             descriptionColumn.Binding = new Binding("Description")
             {
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
             };
-            descriptionColumn.CanUserResize = true;
+
+            var descriptionStyle = new Style(typeof(TextBlock));
+            descriptionStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(8, 0, 8, 0)));
+            descriptionColumn.ElementStyle = descriptionStyle;
+
             dataGrid.Columns.Add(descriptionColumn);
 
             dataGrid.SelectionChanged += (s, e) => LayerGrid_SelectionChanged(assembly, dataGrid);
@@ -483,76 +565,123 @@ namespace UFactor
             return dataGrid;
         }
 
-        private Border CreateResultsPanel(WallAssembly assembly)
+        private Border CreateResultsCard(WallAssembly assembly)
         {
-            var border = new Border();
-            border.BorderBrush = Brushes.DarkBlue;
-            border.BorderThickness = new Thickness(2);
-            border.Background = Brushes.LightBlue;
-            border.Padding = new Thickness(15);
-            border.CornerRadius = new CornerRadius(5);
+            var card = new Border();
+            card.Style = (Style)FindResource("CardPanel");
 
-            var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            // Create gradient brush correctly
+            var gradientBrush = new LinearGradientBrush();
+            gradientBrush.StartPoint = new Point(0, 0);
+            gradientBrush.EndPoint = new Point(1, 1);
+            gradientBrush.GradientStops.Add(new GradientStop(Color.FromRgb(227, 242, 253), 0.0)); // Light blue
+            gradientBrush.GradientStops.Add(new GradientStop(Color.FromRgb(187, 222, 251), 1.0)); // Darker blue
+
+            card.Background = gradientBrush;
+            card.BorderBrush = (SolidColorBrush)FindResource("PrimaryBlue");
+            card.BorderThickness = new Thickness(2);
+
+            var mainGrid = new Grid();
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // Title
+            var titleText = new TextBlock();
+            titleText.Text = "Thermal Performance Results";
+            titleText.FontSize = 20;
+            titleText.FontWeight = FontWeights.Bold;
+            titleText.HorizontalAlignment = HorizontalAlignment.Center;
+            titleText.Foreground = (SolidColorBrush)FindResource("PrimaryBlueDark");
+            titleText.Margin = new Thickness(0, 0, 0, 20);
+            Grid.SetRow(titleText, 0);
+            mainGrid.Children.Add(titleText);
+
+            // Results Grid
+            var resultsGrid = new Grid();
+            resultsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            resultsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            resultsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             // Total R-Value
-            var rValuePanel = new StackPanel();
-            var rValueHeader = new TextBlock();
-            rValueHeader.Text = "Total R-Value";
-            rValueHeader.Style = (Style)FindResource("ResultHeaderStyle");
-            rValuePanel.Children.Add(rValueHeader);
-
-            var rValueText = new TextBlock();
-            rValueText.Style = (Style)FindResource("ResultTextStyle");
-            rValueText.SetBinding(TextBlock.TextProperty, new Binding("TotalRValue")
-            {
-                Source = assembly,
-                StringFormat = "0.### m²·K/W"
-            });
-            rValuePanel.Children.Add(rValueText);
+            var rValuePanel = CreateResultPanel("Total R-Value", "TotalRValue", "0.### m²·K/W", assembly);
             Grid.SetColumn(rValuePanel, 0);
-            grid.Children.Add(rValuePanel);
+            resultsGrid.Children.Add(rValuePanel);
 
             // U-Factor
-            var uFactorPanel = new StackPanel();
-            var uFactorHeader = new TextBlock();
-            uFactorHeader.Text = "U-Factor";
-            uFactorHeader.Style = (Style)FindResource("ResultHeaderStyle");
-            uFactorPanel.Children.Add(uFactorHeader);
-
-            var uFactorText = new TextBlock();
-            uFactorText.Style = (Style)FindResource("ResultTextStyle");
-            uFactorText.SetBinding(TextBlock.TextProperty, new Binding("UFactor")
-            {
-                Source = assembly,
-                StringFormat = "0.### W/(m²·K)"
-            });
-            uFactorPanel.Children.Add(uFactorText);
+            var uFactorPanel = CreateResultPanel("U-Factor", "UFactor", "0.### W/(m²·K)", assembly);
             Grid.SetColumn(uFactorPanel, 1);
-            grid.Children.Add(uFactorPanel);
+            resultsGrid.Children.Add(uFactorPanel);
 
             // Total Thickness
-            var thicknessPanel = new StackPanel();
-            var thicknessHeader = new TextBlock();
-            thicknessHeader.Text = "Total Thickness";
-            thicknessHeader.Style = (Style)FindResource("ResultHeaderStyle");
-            thicknessPanel.Children.Add(thicknessHeader);
+            var thicknessPanel = CreateResultPanel("Total Thickness", "TotalThickness", "0 mm", assembly);
+            Grid.SetColumn(thicknessPanel, 2);
+            resultsGrid.Children.Add(thicknessPanel);
 
-            var thicknessText = new TextBlock();
-            thicknessText.Style = (Style)FindResource("ResultTextStyle");
-            thicknessText.SetBinding(TextBlock.TextProperty, new Binding("TotalThickness")
+            Grid.SetRow(resultsGrid, 1);
+            mainGrid.Children.Add(resultsGrid);
+
+            card.Child = mainGrid;
+            return card;
+        }
+
+        private Border CreateResultPanel(string title, string propertyName, string format, WallAssembly assembly)
+        {
+            var panel = new Border();
+            panel.Background = Brushes.White;
+            panel.BorderBrush = (SolidColorBrush)FindResource("BorderLight");
+            panel.BorderThickness = new Thickness(1);
+            panel.CornerRadius = new CornerRadius(8);
+            panel.Margin = new Thickness(8);
+            panel.Padding = new Thickness(16);
+            panel.Effect = new DropShadowEffect
+            {
+                BlurRadius = 4,
+                ShadowDepth = 1,
+                Color = Colors.Gray,
+                Opacity = 0.3
+            };
+
+            var stackPanel = new StackPanel();
+
+            var headerText = new TextBlock();
+            headerText.Text = title;
+            headerText.Style = (Style)FindResource("ResultHeaderStyle");
+            stackPanel.Children.Add(headerText);
+
+            var valueText = new TextBlock();
+            valueText.Style = (Style)FindResource("ResultTextStyle");
+            valueText.SetBinding(TextBlock.TextProperty, new Binding(propertyName)
             {
                 Source = assembly,
-                StringFormat = "0 mm"
+                StringFormat = format
             });
-            thicknessPanel.Children.Add(thicknessText);
-            Grid.SetColumn(thicknessPanel, 2);
-            grid.Children.Add(thicknessPanel);
+            stackPanel.Children.Add(valueText);
 
-            border.Child = grid;
-            return border;
+            panel.Child = stackPanel;
+            return panel;
+        }
+
+        private Style CreateModernComboBoxStyle()
+        {
+            var style = new Style(typeof(ComboBox));
+            style.Setters.Add(new Setter(ComboBox.BackgroundProperty, FindResource("SurfaceWhite")));
+            style.Setters.Add(new Setter(ComboBox.BorderBrushProperty, FindResource("BorderLight")));
+            style.Setters.Add(new Setter(ComboBox.BorderThicknessProperty, new Thickness(1)));
+            style.Setters.Add(new Setter(ComboBox.PaddingProperty, new Thickness(8, 6, 8, 6)));
+            style.Setters.Add(new Setter(ComboBox.FontSizeProperty, 12.0));
+
+            return (Style)FindResource("ModernComboBox");
+        }
+
+        #endregion
+
+        private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (sender is ScrollViewer scrollViewer)
+            {
+                scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta / 3.0);
+                e.Handled = true;
+            }
         }
 
         private void AddPlusTab()
@@ -1213,7 +1342,7 @@ namespace UFactor
                 return null;
             }
         }
-        // Option 1: Add "Open in New Window" menu item
+
         private void OpenProjectInNewWindow_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1241,7 +1370,6 @@ namespace UFactor
             }
         }
 
-        // Add this method to load a project directly (for new windows)
         public void LoadProjectDirectly(string filePath)
         {
             try
@@ -1255,7 +1383,6 @@ namespace UFactor
             }
         }
 
-        // Option 2: Modify existing Open to ask what user wants
         private void OpenProject_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1321,6 +1448,7 @@ namespace UFactor
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private bool SaveCurrentProject()
         {
             try
@@ -1395,9 +1523,9 @@ namespace UFactor
             }
         }
 
-
         private void SaveProject_Click(object sender, RoutedEventArgs e)
         {
+           // MessageBox.Show("Save button clicked!", "Debug");
             try
             {
                 if (_assemblies == null || _assemblies.Count == 0)

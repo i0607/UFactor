@@ -12,6 +12,8 @@ namespace UFactor
         {
             try
             {
+                SetProcessDPIAware();
+
                 base.OnStartup(e);
 
                 // Initialize the material database
@@ -29,8 +31,10 @@ namespace UFactor
                     "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown(-1);
             }
-        }
 
+        }
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetProcessDPIAware();
         private void AddDefaultMaterials()
         {
             try
