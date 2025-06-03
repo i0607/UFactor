@@ -1672,8 +1672,23 @@ namespace UFactor
         {
             try
             {
-                MessageBox.Show("Documentation functionality will be implemented in a future version.",
-                    "Coming Soon", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Check if documentation window is already open
+                foreach (Window window in Application.Current.Windows)
+                {
+                    if (window is DocumentationWindow)
+                    {
+                        window.Activate();
+                        window.Focus();
+                        return;
+                    }
+                }
+
+                // Create and show new documentation window
+                var documentationWindow = new DocumentationWindow();
+                documentationWindow.Owner = this; // Set parent window
+                documentationWindow.Show(); // Use Show() for non-modal, ShowDialog() for modal
+
+                UpdateStatus("Documentation opened");
             }
             catch (Exception ex)
             {

@@ -1,0 +1,253 @@
+﻿<Window x:Class="UFactor.DocumentationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="U-Factor Calculator - Documentation" 
+        Height="700" Width="1000"
+        WindowStartupLocation="CenterOwner"
+        Icon="../Assets/logo.png"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType">
+
+    <Window.Resources>
+        <!-- Local styles that match your main window -->
+        <SolidColorBrush x:Key="PrimaryBlue" Color="#2C3863"/>
+        <SolidColorBrush x:Key="PrimaryBlueDark" Color="#2C3863"/>
+        <SolidColorBrush x:Key="BackgroundGray" Color="#F5F5F5"/>
+        <SolidColorBrush x:Key="SurfaceWhite" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#212121"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#757575"/>
+        <SolidColorBrush x:Key="BorderLight" Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="Success" Color="#4CAF50"/>
+        <SolidColorBrush x:Key="Warning" Color="#FF9800"/>
+        <SolidColorBrush x:Key="Error" Color="#F44336"/>
+
+        <LinearGradientBrush x:Key="BackgroundGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#F8F9FA" Offset="0"/>
+            <GradientStop Color="#E9ECEF" Offset="1"/>
+        </LinearGradientBrush>
+
+        <DropShadowEffect x:Key="CardShadow" BlurRadius="10" ShadowDepth="2" Color="#40000000" Opacity="0.3"/>
+
+        <!-- Documentation-specific styles -->
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource PrimaryBlue}"/>
+            <Setter Property="Margin" Value="0,20,0,10"/>
+        </Style>
+
+        <Style x:Key="SubHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Margin" Value="0,15,0,8"/>
+        </Style>
+
+        <Style x:Key="BodyText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="LineHeight" Value="18"/>
+        </Style>
+
+        <Style x:Key="CodeText" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Consolas, Courier New, monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Background" Value="#F5F5F5"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Margin" Value="0,5,0,10"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource BackgroundGradient}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="{StaticResource PrimaryBlue}" Padding="20,12">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock  FontSize="24" Margin="0,0,12,0" VerticalAlignment="Center">
+                                 <Image Source="../Assets/logo.png" 
+Width="32" Height="32" 
+Stretch="Uniform"
+Margin="0,0,12,0"/>
+                </TextBlock>
+                <StackPanel>
+                    <TextBlock Text="U-Factor Calculator Documentation" 
+                               FontSize="18" FontWeight="Bold" 
+                               Foreground="White"/>
+                    <TextBlock Text="User Guide and Help Documentation" 
+                               FontSize="12" 
+                               Foreground="White" Opacity="0.9"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Documentation Content -->
+        <Border Grid.Row="1" Background="{StaticResource SurfaceWhite}" 
+                BorderBrush="{StaticResource BorderLight}" 
+                BorderThickness="1,0,1,0"
+                Effect="{StaticResource CardShadow}">
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30">
+                <StackPanel>
+
+                    <!-- Getting Started -->
+                    <TextBlock Text="🚀 Getting Started" Style="{StaticResource SectionHeader}"/>
+
+                    <TextBlock Style="{StaticResource BodyText}">
+                        Welcome to U-Factor Calculator! This tool helps you analyze the thermal performance of building assemblies. 
+                        Follow these steps to create your first thermal analysis:
+                    </TextBlock>
+
+                    <TextBlock Text="1. Creating Your First Assembly" Style="{StaticResource SubHeader}"/>
+                    <TextBlock Style="{StaticResource BodyText}">
+                        • Click the "+" tab or use Ctrl+T to add a new assembly<LineBreak/>
+                        • Enter a descriptive name for your wall assembly<LineBreak/>
+                        • Select the assembly type (Wall, Roof, or Floor)
+                    </TextBlock>
+
+                    <TextBlock Text="2. Adding Materials" Style="{StaticResource SubHeader}"/>
+                    <TextBlock Style="{StaticResource BodyText}">
+                        • Click "Add Layer" to add building materials<LineBreak/>
+                        • Select materials from the dropdown (ordered from outside to inside)<LineBreak/>
+                        • Enter thickness in millimeters for each layer<LineBreak/>
+                        • Add optional descriptions for reference
+                    </TextBlock>
+
+                    <!-- Managing Materials -->
+                    <TextBlock Text="🧱 Managing Materials" Style="{StaticResource SectionHeader}"/>
+
+                    <TextBlock Style="{StaticResource BodyText}">
+                        Access the material database through Tools → Manage Materials to add, edit, or remove building materials.
+                    </TextBlock>
+
+                    <TextBlock Text="Adding New Materials" Style="{StaticResource SubHeader}"/>
+                    <TextBlock Style="{StaticResource BodyText}">
+                        • Material Name: Clear, descriptive name<LineBreak/>
+                        • Thermal Conductivity (k-value): In W/(m·K)<LineBreak/>
+                        • Density: Material density in kg/m³<LineBreak/>
+                        • Category: Organize materials by type
+                    </TextBlock>
+
+                    <!-- Example Assembly -->
+                    <TextBlock Text="📋 Example: Typical Wall Assembly" Style="{StaticResource SectionHeader}"/>
+
+                    <TextBlock Style="{StaticResource BodyText}">
+                        Here's a step-by-step example of creating a typical insulated wall:
+                    </TextBlock>
+
+                    <TextBlock Style="{StaticResource CodeText}">Layer 1 (Outside): Brick Veneer - 100mm</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">Layer 2: Air Gap - 25mm</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">Layer 3: Insulation (Glass Wool) - 90mm</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">Layer 4: Plasterboard - 13mm</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">Layer 5 (Inside): Paint - 1mm</TextBlock>
+
+                    <TextBlock Style="{StaticResource CodeText}">Expected Results:</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">• Total R-Value: ~2.5 m²·K/W</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">• U-Factor: ~0.4 W/(m²·K)</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">• Total Thickness: 229mm</TextBlock>
+
+
+                    <!-- Understanding Results -->
+                    <TextBlock Text="📊 Understanding Results" Style="{StaticResource SectionHeader}"/>
+
+                    <TextBlock Text="R-Value (Thermal Resistance)" Style="{StaticResource SubHeader}"/>
+                    <TextBlock Style="{StaticResource BodyText}">
+                        • Higher R-values = Better insulation<LineBreak/>
+                        • Measured in m²·K/W<LineBreak/>
+                        • R-Value = Thickness ÷ Thermal Conductivity
+                    </TextBlock>
+
+                    <TextBlock Text="U-Factor (Overall Heat Transfer Coefficient)" Style="{StaticResource SubHeader}"/>
+                    <TextBlock Style="{StaticResource BodyText}">
+                        • Lower U-factors = Better thermal performance<LineBreak/>
+                        • Measured in W/(m²·K)<LineBreak/>
+                        • U-Factor = 1 ÷ Total R-Value
+                    </TextBlock>
+
+                    <!-- Keyboard Shortcuts -->
+                    <TextBlock Text="⌨️ Keyboard Shortcuts" Style="{StaticResource SectionHeader}"/>
+
+                    <TextBlock Style="{StaticResource CodeText}">Project Management:</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">• Ctrl+N - New Project</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">• Ctrl+O - Open Project</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">• Ctrl+S - Save Project</TextBlock>
+
+                    <TextBlock Style="{StaticResource CodeText}">Assembly Management:</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">• Ctrl+T - Add New Assembly</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">• Ctrl+W - Close Current Assembly</TextBlock>
+
+                    <TextBlock Style="{StaticResource CodeText}" >Help:</TextBlock>
+                    <TextBlock Style="{StaticResource CodeText}">• ESC - Close Documentation Window</TextBlock>
+
+
+                    <!-- Tips and Best Practices -->
+                    <TextBlock Text="💡 Tips and Best Practices" Style="{StaticResource SectionHeader}"/>
+
+                    <TextBlock Text="Material Selection" Style="{StaticResource SubHeader}"/>
+                    <TextBlock Style="{StaticResource BodyText}">
+                        • Always verify material properties from manufacturer data<LineBreak/>
+                        • Consider thermal bridging effects in real construction<LineBreak/>
+                        • Use representative thicknesses for your climate zone
+                    </TextBlock>
+
+                    <TextBlock Text="Assembly Design" Style="{StaticResource SubHeader}"/>
+                    <TextBlock Style="{StaticResource BodyText}">
+                        • Order layers from outside to inside surface<LineBreak/>
+                        • Include all significant thermal layers<LineBreak/>
+                        • Consider vapor barriers and air gaps<LineBreak/>
+                        • Save projects regularly with descriptive names
+                    </TextBlock>
+
+                    <!-- Troubleshooting -->
+                    <TextBlock Text="🔧 Troubleshooting" Style="{StaticResource SectionHeader}"/>
+
+                    <TextBlock Text="Common Issues" Style="{StaticResource SubHeader}"/>
+                    <TextBlock Style="{StaticResource BodyText}">
+                        • Missing materials: Use Tools → Manage Materials to add required materials<LineBreak/>
+                        • Unexpected results: Verify material thermal conductivity values<LineBreak/>
+                        • Performance issues: Close unused assembly tabs to improve performance<LineBreak/>
+                        • Project not saving: Check file permissions and available disk space
+                    </TextBlock>
+
+
+
+                    <!-- Footer spacer -->
+                    <Border Height="40"/>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="{StaticResource SurfaceWhite}" 
+                BorderBrush="{StaticResource BorderLight}" 
+                BorderThickness="0,1,0,0" Padding="16,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock Text="U-Factor Calculator v1.0" 
+                           Foreground="{StaticResource TextSecondary}" 
+                           FontSize="11"/>
+                <TextBlock Text=" • " 
+                           Foreground="{StaticResource TextSecondary}" 
+                           FontSize="11" Margin="8,0"/>
+                <TextBlock Text="FIU - Final International University" 
+                           Foreground="{StaticResource TextSecondary}" 
+                           FontSize="11"/>
+                <TextBlock Text=" • " 
+                           Foreground="{StaticResource TextSecondary}" 
+                           FontSize="11" Margin="8,0"/>
+                <TextBlock Text="Press ESC to close" 
+                           Foreground="{StaticResource TextSecondary}" 
+                           FontSize="11"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
